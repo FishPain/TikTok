@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.2",
   "info": {
-    "title": "AI Microservices Gateway",
-    "description": "Gateway for AI inference microservices with public masking APIs",
+    "title": "AI Microservices Gateway", 
+    "description": "Streamlined gateway for AI-powered masking APIs with YOLO and OpenAI integration",
     "version": "1.0",
     "contact": {
       "email": "support@example.com"

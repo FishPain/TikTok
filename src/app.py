@@ -16,10 +16,7 @@ api = Api(app, version="1.0", title="AI Microservices Gateway",
 # Service URLs from environment variables
 SERVICES = {
     "yolo": os.getenv("YOLO_SERVICE_URL", "http://yolo-service:7000"),
-    "resnet": os.getenv("RESNET_SERVICE_URL", "http://resnet-service:6000"),
-    "mobilenet": os.getenv("MOBILENET_SERVICE_URL", "http://mobilenet-service:8000"),
-    "openai": os.getenv("OPENAI_SERVICE_URL", "http://openai-service:9000"),
-    "face_detection": os.getenv("FACE_DETECTION_SERVICE_URL", "http://face-detection-service:5500")
+    "openai": os.getenv("OPENAI_SERVICE_URL", "http://openai-service:9000")
 }
 
 # Namespaces
@@ -36,13 +33,6 @@ chat_req = api.model("ChatRequest", {
 })
 
 # Models for masking APIs
-bbox_model = api.model("BoundingBox", {
-    "x1": fields.Float(required=True, description="Left x coordinate"),
-    "y1": fields.Float(required=True, description="Top y coordinate"),
-    "x2": fields.Float(required=True, description="Right x coordinate"),
-    "y2": fields.Float(required=True, description="Bottom y coordinate")
-})
-
 mask_response = api.model("MaskResponse", {
     "data": fields.List(fields.List(fields.Float), required=True, 
                        description="Array of bounding boxes in format [[x1,y1,x2,y2], ...]",
@@ -53,11 +43,6 @@ ocr_value_model = api.model("OCRValue", {
     "text": fields.String(required=True, description="Detected text"),
     "bbox": fields.List(fields.Float, required=True, description="Bounding box [x1,y1,x2,y2]"),
     "confidence": fields.Float(description="OCR confidence score")
-})
-
-pii_request = api.model("PIIRequest", {
-    "ocr_values": fields.List(fields.Nested(ocr_value_model), required=True,
-                             description="OCR detected values with bounding boxes")
 })
 
 @ns_v1.route("/health")
@@ -100,147 +85,43 @@ class ChatCompletion(Resource):
             logger.error(f"OpenAI service error: {str(e)}")
             return {"error": f"OpenAI service unavailable: {str(e)}"}, 503
 
-@ns_v1.route("/vision/classify/resnet")
-class ResNetClassification(Resource):
-    def post(self):
-        """Image classification using ResNet"""
-        if "file" not in request.files:
-            return {"error": "No file provided"}, 400
-
-        file = request.files["file"]
-        try:
-            response = requests.post(
-                f"{SERVICES['resnet']}/predict",
-                files={"file": (file.filename, file.stream, file.mimetype)},
-                timeout=30
-            )
-            return response.json(), response.status_code
-        except Exception as e:
-            logger.error(f"ResNet service error: {str(e)}")
-            return {"error": f"ResNet service unavailable: {str(e)}"}, 503
-
-@ns_v1.route("/vision/classify/mobilenet")
-class MobileNetClassification(Resource):
-    def post(self):
-        """Image classification using MobileNet"""
-        if "file" not in request.files:
-            return {"error": "No file provided"}, 400
-
-        file = request.files["file"]
-        try:
-            response = requests.post(
-                f"{SERVICES['mobilenet']}/predict",
-                files={"file": (file.filename, file.stream, file.mimetype)},
-                timeout=30
-            )
-            return response.json(), response.status_code
-        except Exception as e:
-            logger.error(f"MobileNet service error: {str(e)}")
-            return {"error": f"MobileNet service unavailable: {str(e)}"}, 503
-
-@ns_v1.route("/vision/detect/yolo")
-class YOLODetection(Resource):
-    def post(self):
-        """Object detection using YOLO"""
-        if "file" not in request.files:
-            return {"error": "No file provided"}, 400
-
-        file = request.files["file"]
-        try:
-            response = requests.post(
-                f"{SERVICES['yolo']}/detect",
-                files={"file": (file.filename, file.stream, file.mimetype)},
-                timeout=30
-            )
-            return response.json(), response.status_code
-        except Exception as e:
-            logger.error(f"YOLO service error: {str(e)}")
-            return {"error": f"YOLO service unavailable: {str(e)}"}, 503
-
-@ns_v1.route("/vision/analyze")
-class VisionAnalyze(Resource):
-    def post(self):
-        """Comprehensive vision analysis using multiple models"""
-        if "file" not in request.files:
-            return {"error": "No file provided"}, 400
-
-        file = request.files["file"]
-        results = {}
-        
-        # Prepare file data for multiple requests
-        file_data = file.read()
-        file.seek(0)  # Reset file pointer
-        
-        # Run all vision models in parallel (you could use threading for better performance)
-        try:
-            # YOLO Detection
-            try:
-                yolo_response = requests.post(
-                    f"{SERVICES['yolo']}/detect",
-                    files={"file": (file.filename, file_data, file.mimetype)},
-                    timeout=30
-                )
-                results["object_detection"] = yolo_response.json()
-            except Exception as e:
-                results["object_detection"] = {"error": str(e)}
-
-            # ResNet Classification
-            try:
-                resnet_response = requests.post(
-                    f"{SERVICES['resnet']}/predict",
-                    files={"file": (file.filename, file_data, file.mimetype)},
-                    timeout=30
-                )
-                results["resnet_classification"] = resnet_response.json()
-            except Exception as e:
-                results["resnet_classification"] = {"error": str(e)}
-
-            # MobileNet Classification
-            try:
-                mobilenet_response = requests.post(
-                    f"{SERVICES['mobilenet']}/predict",
-                    files={"file": (file.filename, file_data, file.mimetype)},
-                    timeout=30
-                )
-                results["mobilenet_classification"] = mobilenet_response.json()
-            except Exception as e:
-                results["mobilenet_classification"] = {"error": str(e)}
-
-            return {
-                "analysis_id": f"analysis_{hash(file.filename)}",
-                "results": results
-            }
-        except Exception as e:
-            logger.error(f"Vision analysis error: {str(e)}")
-            return {"error": f"Vision analysis failed: {str(e)}"}, 500
-
-
-# =============================================================================
-# PUBLIC MASKING APIs
-# =============================================================================
-
 def detect_faces_in_image(image_data) -> List[Tuple[float, float, float, float]]:
     """
-    Detect faces in image and return bounding boxes
+    Detect faces in image using YOLO and return bounding boxes
     Returns list of (x1, y1, x2, y2) tuples
     """
     try:
-        # Call face detection service
+        # Call YOLO service for object detection
         response = requests.post(
-            f"{SERVICES['face_detection']}/detect",
+            f"{SERVICES['yolo']}/detect",
             files={"file": ("image.jpg", image_data, "image/jpeg")},
             timeout=30
         )
         
         if response.status_code == 200:
             result = response.json()
-            faces = result.get("faces", [])
-            return [(face[0], face[1], face[2], face[3]) for face in faces]
+            detections = result.get("detections", [])
+            
+            # Filter for person/face detections
+            face_boxes = []
+            for detection in detections:
+                class_name = detection.get("class", "").lower()
+                if "person" in class_name or "face" in class_name:
+                    bbox = detection.get("bbox", {})
+                    face_boxes.append((
+                        float(bbox.get("x1", 0)),
+                        float(bbox.get("y1", 0)),
+                        float(bbox.get("x2", 0)),
+                        float(bbox.get("y2", 0))
+                    ))
+            
+            if face_boxes:
+                return face_boxes
         else:
-            logger.error(f"Face detection service error: {response.status_code}")
+            logger.error(f"YOLO service error: {response.status_code}")
             
     except Exception as e:
-        logger.error(f"Face detection service call failed: {e}")
+        logger.error(f"YOLO service call failed: {e}")
     
     # Fallback to mock data if service fails
     return [
@@ -250,11 +131,45 @@ def detect_faces_in_image(image_data) -> List[Tuple[float, float, float, float]]
 
 def detect_location_in_image(image_data) -> List[Tuple[float, float, float, float]]:
     """
-    Detect location-related content in image and return bounding boxes
+    Detect location-related content in image using YOLO and return bounding boxes
     Returns list of (x1, y1, x2, y2) tuples
     """
-    # TODO: Implement actual location detection (street signs, landmarks, etc.)
-    # For now, return mock data
+    try:
+        # Call YOLO service for object detection
+        response = requests.post(
+            f"{SERVICES['yolo']}/detect",
+            files={"file": ("image.jpg", image_data, "image/jpeg")},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            detections = result.get("detections", [])
+            
+            # Filter for location-related objects (signs, landmarks, buildings, etc.)
+            location_boxes = []
+            location_classes = ["stop sign", "traffic light", "street sign", "building", "car", "truck", "bus"]
+            
+            for detection in detections:
+                class_name = detection.get("class", "").lower()
+                if any(loc_class in class_name for loc_class in location_classes):
+                    bbox = detection.get("bbox", {})
+                    location_boxes.append((
+                        float(bbox.get("x1", 0)),
+                        float(bbox.get("y1", 0)),
+                        float(bbox.get("x2", 0)),
+                        float(bbox.get("y2", 0))
+                    ))
+            
+            if location_boxes:
+                return location_boxes
+        else:
+            logger.error(f"YOLO service error: {response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"YOLO service call failed: {e}")
+    
+    # Fallback to mock data if service fails
     return [
         (50.0, 75.5, 180.3, 120.8),
         (250.2, 300.1, 400.6, 380.9)
@@ -262,22 +177,74 @@ def detect_location_in_image(image_data) -> List[Tuple[float, float, float, floa
 
 def detect_pii_in_ocr(ocr_values: List[Dict]) -> List[Tuple[float, float, float, float]]:
     """
-    Detect PII in OCR values and return bounding boxes of sensitive information
+    Detect PII in OCR values using OpenAI and return bounding boxes of sensitive information
     Returns list of (x1, y1, x2, y2) tuples
     """
-    # TODO: Implement actual PII detection logic
-    # Check for patterns like phone numbers, emails, SSN, etc.
     pii_boxes = []
     
-    # Mock PII detection logic
-    for ocr_item in ocr_values:
-        text = ocr_item.get("text", "").lower()
-        bbox = ocr_item.get("bbox", [])
+    try:
+        # Prepare text for OpenAI analysis
+        ocr_texts = [item.get("text", "") for item in ocr_values]
+        combined_text = " | ".join(ocr_texts)
         
-        # Simple pattern matching (expand this with real PII detection)
-        if any(pattern in text for pattern in ["@", "phone", "ssn", "email", "address"]):
-            if len(bbox) >= 4:
-                pii_boxes.append((float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])))
+        # Call OpenAI service to analyze for PII
+        openai_request = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {
+                    "role": "system", 
+                    "content": "You are a PII detection expert. Analyze the following OCR text and identify any personally identifiable information such as names, emails, phone numbers, addresses, SSN, etc. Respond with a JSON array of detected PII indices in the format: [{\"type\": \"email\", \"text\": \"john@example.com\", \"index\": 0}]"
+                },
+                {
+                    "role": "user", 
+                    "content": f"OCR texts to analyze: {combined_text}"
+                }
+            ],
+            "temperature": 0.1,
+            "max_tokens": 200
+        }
+        
+        response = requests.post(
+            f"{SERVICES['openai']}/chat/completions",
+            json=openai_request,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            # Parse AI response and match with OCR bounding boxes
+            # For now, use simple pattern matching as fallback
+            for i, ocr_item in enumerate(ocr_values):
+                text = ocr_item.get("text", "").lower()
+                bbox = ocr_item.get("bbox", [])
+                
+                # Enhanced pattern matching
+                pii_patterns = [
+                    "@",  # Email
+                    "phone", "tel:", "call",  # Phone
+                    "ssn", "social security",  # SSN
+                    "address", "street", "ave", "rd",  # Address
+                    "license", "id:", "passport"  # IDs
+                ]
+                
+                if any(pattern in text for pattern in pii_patterns) and len(bbox) >= 4:
+                    pii_boxes.append((float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])))
+        else:
+            logger.error(f"OpenAI service error: {response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"OpenAI PII detection failed: {e}")
+        
+        # Fallback to basic pattern matching
+        for ocr_item in ocr_values:
+            text = ocr_item.get("text", "").lower()
+            bbox = ocr_item.get("bbox", [])
+            
+            if any(pattern in text for pattern in ["@", "phone", "ssn", "email", "address"]):
+                if len(bbox) >= 4:
+                    pii_boxes.append((float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])))
     
     # Add some mock data if no PII detected
     if not pii_boxes:

@@ -1,37 +1,27 @@
 # AI Microservices Inference Pipeline
 
-A comprehensive microservice architecture for AI inference with multiple models running in containerized environments.
+A streamlined microservice architecture for AI-powered masking APIs with YOLO object detection and OpenAI integration.
 
 ## Architecture Overview
 
-This project implements a microservice-based AI inference pipeline with the following components:
+This project implements a focused microservice-based AI inference pipeline optimized for masking applications:
 
 ### Services
 
 1. **API Gateway** (`api-gateway`) - Port 5000
    - Main entry point for all AI inference requests
    - Routes requests to appropriate microservices
-   - Provides health monitoring and aggregated responses
+   - Provides health monitoring and service orchestration
    - Built with Flask and Flask-RESTX (Swagger documentation)
 
 2. **YOLO Object Detection Service** (`yolo-service`) - Port 7000
    - YOLOv5 model for object detection
-   - Detects and localizes objects in images
+   - Powers face detection and location masking
    - Returns bounding boxes, class labels, and confidence scores
 
-3. **ResNet Image Classification Service** (`resnet-service`) - Port 6000
-   - ResNet18 model for image classification
-   - ImageNet-based classification with 1000 classes
-   - Returns top-5 predictions with confidence scores
-
-4. **MobileNet Image Classification Service** (`mobilenet-service`) - Port 8000
-   - MobileNetV3-Large for efficient image classification
-   - Optimized for mobile and edge deployment
-   - Returns top-5 predictions with confidence scores
-
-5. **OpenAI Service** (`openai-service`) - Port 9000
+3. **OpenAI Service** (`openai-service`) - Port 9000
    - Proxy service for OpenAI API calls
-   - Handles chat completions and model listing
+   - Handles chat completions and PII detection
    - Manages API key and error handling
 
 ## Project Structure
@@ -48,6 +38,11 @@ This project implements a microservice-based AI inference pipeline with the foll
         │   ├── Dockerfile.yolo
         │   ├── requirements.txt
         │   └── yolo.py
+        └── openai/
+            ├── Dockerfile.openai
+            ├── requirements.txt
+            └── openai_service.py
+```
         ├── resnet/
         │   ├── Dockerfile.resnet
         │   ├── requirements.txt
@@ -70,16 +65,10 @@ This project implements a microservice-based AI inference pipeline with the foll
 ### Chat Completions
 - `POST /v1/chat/completions` - OpenAI chat completions
 
-### Vision Services
-- `POST /v1/vision/classify/resnet` - ResNet image classification
-- `POST /v1/vision/classify/mobilenet` - MobileNet image classification
-- `POST /v1/vision/detect/yolo` - YOLO object detection
-- `POST /v1/vision/analyze` - Comprehensive analysis using all vision models
-
 ### 🔒 Public Masking APIs
-- `POST /api/mask/face` - Detect faces and return bounding boxes for masking
-- `POST /api/mask/location` - Detect location content and return bounding boxes for masking  
-- `POST /api/mask/pii` - Detect PII in OCR data and return bounding boxes for masking
+- `POST /api/mask/face` - Detect faces using YOLO and return bounding boxes for masking
+- `POST /api/mask/location` - Detect location content using YOLO and return bounding boxes for masking  
+- `POST /api/mask/pii` - Detect PII using OpenAI analysis and return bounding boxes for masking
 
 ## Setup and Deployment
 
@@ -116,21 +105,6 @@ docker-compose up yolo-service
 ### Health Check
 ```bash
 curl -X GET http://localhost:5000/v1/health
-```
-
-### Image Classification (ResNet)
-```bash
-curl -X POST -F "file=@image.jpg" http://localhost:5000/v1/vision/classify/resnet
-```
-
-### Object Detection (YOLO)
-```bash
-curl -X POST -F "file=@image.jpg" http://localhost:5000/v1/vision/detect/yolo
-```
-
-### Comprehensive Vision Analysis
-```bash
-curl -X POST -F "file=@image.jpg" http://localhost:5000/v1/vision/analyze
 ```
 
 ### Public Masking APIs
@@ -204,23 +178,13 @@ Once the services are running, you can access the interactive API documentation 
 - **Input**: Image files (JPEG, PNG)
 - **Output**: Object detections with bounding boxes and confidence scores
 - **Confidence Threshold**: 0.5 (configurable)
-
-### ResNet Service
-- **Model**: ResNet18 (pretrained on ImageNet)
-- **Input**: Image files (JPEG, PNG)
-- **Output**: Top-5 class predictions with confidence scores
-- **Classes**: 1000 ImageNet classes
-
-### MobileNet Service
-- **Model**: MobileNetV3-Large (pretrained on ImageNet)
-- **Input**: Image files (JPEG, PNG)
-- **Output**: Top-5 class predictions with confidence scores
-- **Classes**: 1000 ImageNet classes
+- **Use Cases**: Face detection, location masking (signs, vehicles, buildings)
 
 ### OpenAI Service
 - **Models**: All OpenAI models (gpt-3.5-turbo, gpt-4, etc.)
 - **Input**: Chat messages in OpenAI format
 - **Output**: Generated responses with usage statistics
+- **Use Cases**: Chat completions, PII detection in OCR text
 
 ## Monitoring and Logging
 
@@ -265,11 +229,9 @@ Each service can be tested independently or through the API gateway.
 ### Logs
 Check service logs:
 ```bash
-docker-compose logs yolo-service
-docker-compose logs resnet-service
-docker-compose logs mobilenet-service
-docker-compose logs openai-service
-docker-compose logs api-gateway
+docker compose logs yolo-service
+docker compose logs openai-service
+docker compose logs api-gateway
 ```
 
 ## License

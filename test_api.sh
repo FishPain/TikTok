@@ -55,14 +55,15 @@ echo -e "\n"
 # Clean up test image
 rm -f test_image.png
 
-echo "4. Vision Service Endpoints (require actual image files):"
-echo "   - POST $V1_URL/vision/classify/resnet"
-echo "   - POST $V1_URL/vision/classify/mobilenet"
-echo "   - POST $V1_URL/vision/detect/yolo"
-echo "   - POST $V1_URL/vision/analyze"
+echo "4. Available Endpoints Summary:"
+echo "   Core Services:"
+echo "   - GET  $V1_URL/health (Service health check)"
+echo "   - POST $V1_URL/chat/completions (OpenAI chat)"
 echo ""
-echo "Example usage:"
-echo "curl -X POST -F \"file=@your_image.jpg\" $V1_URL/vision/classify/resnet"
+echo "   Masking APIs:"
+echo "   - POST $API_URL/mask/face (Face detection via YOLO)"
+echo "   - POST $API_URL/mask/location (Location detection via YOLO)"
+echo "   - POST $API_URL/mask/pii (PII detection via OpenAI)"
 echo ""
 
 echo "✅ Test script completed!"

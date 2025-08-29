@@ -10,21 +10,15 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - YOLO_SERVICE_URL=http://yolo-service:7000
-      - RESNET_SERVICE_URL=http://resnet-service:6000
-      - MOBILENET_SERVICE_URL=http://mobilenet-service:8000
       - OPENAI_SERVICE_URL=http://openai-service:9000
-      - FACE_DETECTION_SERVICE_URL=http://face-detection-service:5500
     depends_on:
       - yolo-service
-      - resnet-service
-      - mobilenet-service
       - openai-service
-      - face-detection-service
     restart: unless-stopped
     networks:
       - ai-network
 
-  # YOLO Object Detection Service
+  # YOLO Object Detection Service (for face and location masking)
   yolo-service:
     build:
       context: ./src/services/yolo
@@ -38,31 +32,7 @@ services:
     networks:
       - ai-network
 
-  # ResNet Image Classification Service
-  resnet-service:
-    build:
-      context: ./src/services/resnet
-      dockerfile: Dockerfile.resnet
-    container_name: resnet-service
-    ports:
-      - "6000:6000"
-    restart: unless-stopped
-    networks:
-      - ai-network
-
-  # MobileNet Image Classification Service
-  mobilenet-service:
-    build:
-      context: ./src/services/mobilenet
-      dockerfile: Dockerfile.mobilenet
-    container_name: mobilenet-service
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-    networks:
-      - ai-network
-
-  # OpenAI Service
+  # OpenAI Service (for chat and PII detection)
   openai-service:
     build:
       context: ./src/services/openai
@@ -72,18 +42,6 @@ services:
       - "9000:9000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    restart: unless-stopped
-    networks:
-      - ai-network
-
-  # Face Detection Service (for masking APIs)
-  face-detection-service:
-    build:
-      context: ./src/services/face_detection
-      dockerfile: Dockerfile.face
-    container_name: face-detection-service
-    ports:
-      - "5500:5500"
     restart: unless-stopped
     networks:
       - ai-network
