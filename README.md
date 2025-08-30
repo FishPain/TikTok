@@ -24,6 +24,11 @@ This project implements a focused microservice-based AI inference pipeline optim
    - Handles chat completions and PII detection
    - Manages API key and error handling
 
+4. **Age Detection Service** (`age-detection-service`) - Port 5100
+   - Combines YOLO and age classification models
+   - Selective face blurring for minor protection
+   - Advanced privacy features with text/plate/QR detection
+
 ## Project Structure
 
 ```
@@ -38,23 +43,16 @@ This project implements a focused microservice-based AI inference pipeline optim
         │   ├── Dockerfile.yolo
         │   ├── requirements.txt
         │   └── yolo.py
-        └── openai/
-            ├── Dockerfile.openai
-            ├── requirements.txt
-            └── openai_service.py
-```
-        ├── resnet/
-        │   ├── Dockerfile.resnet
+        ├── openai/
+        │   ├── Dockerfile.openai
         │   ├── requirements.txt
-        │   └── resnet.py
-        ├── mobilenet/
-        │   ├── Dockerfile.mobilenet
-        │   ├── requirements.txt
-        │   └── mobilenet.py
-        └── openai/
-            ├── Dockerfile.openai
+        │   └── openai_service.py
+        └── age/
+            ├── Dockerfile
             ├── requirements.txt
-            └── openai_service.py
+            ├── age_detection_service.py
+            ├── test_age_api.py
+            └── README.md
 ```
 
 ## API Endpoints

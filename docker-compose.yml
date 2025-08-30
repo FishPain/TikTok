@@ -46,6 +46,20 @@ services:
     networks:
       - ai-network
 
+  # Age Detection Service (for minor protection with YOLO + age models)
+  age-detection-service:
+    build:
+      context: ./src/services/age
+      dockerfile: Dockerfile
+    container_name: age-detection-service
+    ports:
+      - "5100:5100"
+    volumes:
+      - ./models:/app/models
+    restart: unless-stopped
+    networks:
+      - ai-network
+
 networks:
   ai-network:
     driver: bridge
