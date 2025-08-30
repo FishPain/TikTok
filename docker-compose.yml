@@ -9,16 +9,18 @@ services:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - YOLO_SERVICE_URL=http://yolo-service:8100
       - LLM_SERVICE_URL=http://llm-service:8200
+      - LOCATION_SERVICE_URL=http://location-service:8300
     depends_on:
       - yolo-service
       - llm-service
+      - location-service
     restart: unless-stopped
     networks:
       - ai-network
 
-  # YOLO Object Detection Service (for face and location masking)
   yolo-service:
     build:
       context: ./services/yolo
@@ -32,7 +34,6 @@ services:
     networks:
       - ai-network
 
-  # LLM Service (for PII detection)
   llm-service:
     build:
       context: ./services/llm
@@ -42,6 +43,19 @@ services:
       - "8200:8200"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    networks:
+      - ai-network
+  
+  location-service:
+    build:
+      context: ./services/location
+      dockerfile: Dockerfile
+    container_name: location-service
+    ports:
+      - "8300:8300"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     restart: unless-stopped
     networks:
       - ai-network

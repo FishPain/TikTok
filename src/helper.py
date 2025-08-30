@@ -7,9 +7,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 SERVICES = {
     "yolo": os.getenv("YOLO_SERVICE_URL", "http://yolo-service:8100"),
     "llm": os.getenv("LLM_SERVICE_URL", "http://llm-service:8200"),
+    "location": os.getenv("LOCATION_SERVICE_URL", "http://location-service:8300"),
 }
 
 
@@ -20,7 +22,7 @@ def detect_faces_in_image(image_data: bytes) -> List[Tuple[float, float, float, 
             f"{SERVICES['yolo']}/detect/age",
             files={"file": ("image.jpg", image_data, "image/jpeg")},
             data={"type": "faces"},
-            timeout=30,
+            timeout=180,
         )
         if response.status_code == 200:
             result = response.json()
@@ -51,41 +53,18 @@ def detect_location_in_image(
 ) -> List[Tuple[float, float, float, float]]:
     try:
         response = requests.post(
-            f"{SERVICES['yolo']}/detect",
-            files={"file": ("image.jpg", image_data, "image/jpeg")},
+            f"{SERVICES['location']}/location/hide",
+            files={"image": ("image.jpg", image_data, "image/jpeg")},
             data={"type": "general"},
-            timeout=30,
+            timeout=180,
         )
         if response.status_code == 200:
             result = response.json()
-            detections = result.get("detections", [])
-            location_boxes = []
-            location_classes = [
-                "stop sign",
-                "traffic light",
-                "street sign",
-                "building",
-                "car",
-                "truck",
-                "bus",
-            ]
-            for det in detections:
-                class_name = det.get("class", "").lower()
-                if any(c in class_name for c in location_classes):
-                    bbox = det.get("bbox", {})
-                    location_boxes.append(
-                        (
-                            float(bbox.get("x1", 0)),
-                            float(bbox.get("y1", 0)),
-                            float(bbox.get("x2", 0)),
-                            float(bbox.get("y2", 0)),
-                        )
-                    )
-            return location_boxes
+            return result.get("image_path", [])
         else:
-            logger.error(f"YOLO service error: {response.status_code}")
+            logger.error(f"Location service error: {response.status_code}")
     except Exception as e:
-        logger.error(f"YOLO service call failed: {e}")
+        logger.error(f"Location service call failed: {e}")
     return []
 
 
@@ -124,7 +103,7 @@ def detect_pii_in_ocr(
         f"{SERVICES['llm']}/classify/pii",
         files=files,
         data=form,
-        timeout=30,
+        timeout=180,
     )
 
     if resp.status_code != 200:
@@ -249,7 +228,7 @@ def extract_ocr_values(image_data: bytes) -> Optional[List[Dict[str, Any]]]:
     files = {"file": ("image.jpg", image_data, "image/jpeg")}
     try:
         resp = requests.post(
-            f"{SERVICES['yolo']}/process/text", files=files, timeout=30
+            f"{SERVICES['yolo']}/process/text", files=files, timeout=180
         )
         if resp.status_code == 200:
             return resp.json()
@@ -287,10 +266,9 @@ def build_privacy_masks(
 
     # LOCATION
     if "location" in vulnerabilities:
-        loc_boxes = detect_location_in_image(image_data)
-        result["location"] = _format_masks(
-            loc_boxes, reason="location-revealing object"
-        )
+        generated_image = detect_location_in_image(image_data)
+        logger.info(f"Generated image with location hidden: {generated_image}")
+        result["location"] = generated_image
 
     # PII
     if "PII" in vulnerabilities:

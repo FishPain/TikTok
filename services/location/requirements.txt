@@ -1,0 +1,7 @@
+flask
+werkzeug
+pillow
+numpy
+google-genai
+python-dotenv
+boto3

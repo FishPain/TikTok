@@ -16,6 +16,7 @@ from helper import (
 SERVICES = {
     "yolo": os.getenv("YOLO_SERVICE_URL", "http://yolo-service:8100"),
     "llm": os.getenv("LLM_SERVICE_URL", "http://llm-service:8200"),
+    "location": os.getenv("LOCATION_SERVICE_URL", "http://location-service:8300"),
 }
 
 
@@ -202,15 +203,8 @@ class LocationMask(Resource):
             image_data = file.read()
 
             # Detect location content
-            location_boxes = detect_location_in_image(image_data)
-
-            # Convert to standardized format using helper function
-            from helper import _format_masks
-
-            result = _format_masks(location_boxes, reason="location-revealing object")
-
-            # Return consistent structure (empty mask array if no detections)
-            return result or {"mask": []}
+            generated_image = detect_location_in_image(image_data)
+            return {"image": generated_image}
 
         except Exception as e:
             logger.error(f"Location detection error: {str(e)}")
@@ -294,12 +288,6 @@ class PrivacyPipeline(Resource):
 
         This endpoint combines the results of /mask/face, /mask/location, and /mask/pii
         into a single response with the same structure format:
-
-        {
-            "face": {"mask": [{"coordinate": "(x1, x2, y1, y2)", "reason": "visible face"}]} or null,
-            "location": {"mask": [{"coordinate": "(x1, x2, y1, y2)", "reason": "location-revealing object"}]} or null,
-            "pii": {"mask": [{"coordinate": "(x1, x2, y1, y2)", "reason": "potential personal info"}]} or null
-        }
 
         Each category will be null if no vulnerabilities of that type are detected,
         or will contain a mask array with coordinate and reason for each detection.
