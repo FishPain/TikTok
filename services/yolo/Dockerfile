@@ -30,7 +30,7 @@ COPY yolo.py .
 
 COPY models /app/models
 
-EXPOSE 5100
+EXPOSE 7000
 
 ENV FLASK_APP=yolo.py
 ENV FLASK_ENV=production

@@ -1,0 +1,7 @@
+flask
+werkzeug
+pillow
+numpy
+langchain
+langchain-openai
+pydantic

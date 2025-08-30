@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src/ ./src/
+COPY app.py .
 
 EXPOSE 5000
-CMD ["python", "src/app.py"]
+CMD ["python", "app.py"]

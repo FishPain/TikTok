@@ -447,6 +447,83 @@ def detect_age_endpoint():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/detect", methods=["POST"])
+def detect_objects():
+    """General object detection endpoint"""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only .jpg, .jpeg, .png files are allowed"}), 400
+
+    yolo_conf = float(request.form.get("conf", 0.4))
+    detection_type = request.form.get("type", "general")  # "faces", "general", or "all"
+
+    try:
+        # Load image
+        image = Image.open(file.stream).convert("RGB")
+        image_bgr = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        H, W = image_bgr.shape[:2]
+
+        detections = []
+
+        if detection_type in ["faces", "all"]:
+            # Detect faces
+            faces = detect_faces(image_bgr, yolo_conf=yolo_conf)
+            for x, y, w, h in faces:
+                detections.append(
+                    {
+                        "class": "face",
+                        "confidence": 0.9,  # Default confidence for face detection
+                        "bbox": {
+                            "x1": float(x),
+                            "y1": float(y),
+                            "x2": float(x + w),
+                            "y2": float(y + h),
+                        },
+                    }
+                )
+
+        if detection_type in ["general", "all"] and yolo_general is not None:
+            # General object detection
+            results = yolo_general.predict(image_bgr, conf=yolo_conf, verbose=False)
+            for r in results:
+                names = r.names if hasattr(r, "names") else {}
+                if r.boxes is None:
+                    continue
+                for b in r.boxes:
+                    cls_id = int(b.cls[0].item()) if b.cls is not None else -1
+                    cls_name = names.get(cls_id, str(cls_id))
+                    confidence = float(b.conf[0].item()) if b.conf is not None else 0.0
+                    xyxy = b.xyxy[0].cpu().numpy().astype(float).tolist()
+
+                    detections.append(
+                        {
+                            "class": cls_name,
+                            "confidence": confidence,
+                            "bbox": {
+                                "x1": xyxy[0],
+                                "y1": xyxy[1],
+                                "x2": xyxy[2],
+                                "y2": xyxy[3],
+                            },
+                        }
+                    )
+
+        return jsonify(
+            {
+                "detections": detections,
+                "total_detections": len(detections),
+                "image_dimensions": {"width": W, "height": H},
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Object detection error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/process/blur-text", methods=["POST"])
 def blur_text_endpoint():
     """Detect text regions"""
@@ -544,4 +621,4 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5100, debug=True)
+    app.run(host="0.0.0.0", port=7000, debug=True)

@@ -1,12 +1,175 @@
-# AI Microservices Inference Pipeline
+# TikTok AI Microservices
 
-A streamlined microservice architecture for AI-powered masking APIs with YOLO object detection and OpenAI integration.
+A microservices architecture for AI-powered content masking with face detection, location detection, and PII (Personally Identifiable Information) detection.
 
-## Architecture Overview
+## Architecture
 
-This project implements a focused microservice-based AI inference pipeline optimized for masking applications:
+This project consists of three main services:
 
-### Services
+1. **API Gateway** (`app.py`) - Main REST API with Swagger documentation
+2. **YOLO Service** (`services/yolo/`) - Computer vision service for object and face detection
+3. **LLM Service** (`services/llm/`) - Language model service for PII detection in OCR text
+
+## Features
+
+- **Face Masking**: Detect faces in images and return bounding boxes for masking
+- **Location Masking**: Detect location-related objects (signs, vehicles, etc.) for privacy
+- **PII Detection**: Analyze OCR text using AI to identify personally identifiable information
+- **Microservice Architecture**: Each service runs independently in Docker containers
+- **Health Monitoring**: Built-in health checks for all services
+- **Swagger Documentation**: Interactive API documentation
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- OpenAI API Key
+
+### Setup
+
+1. **Clone and navigate to the project:**
+   ```bash
+   cd /path/to/TikTok
+   ```
+
+2. **Set up environment variables:**
+   ```bash
+   cp .env.template .env
+   # Edit .env and add your OpenAI API key
+   ```
+
+3. **Start all services:**
+   ```bash
+   ./start.sh
+   ```
+
+   Or manually:
+   ```bash
+   docker compose up --build
+   ```
+
+### Service Endpoints
+
+Once running, you can access:
+
+- **API Gateway**: http://localhost:5000 (Swagger UI available)
+- **YOLO Service**: http://localhost:7000 
+- **LLM Service**: http://localhost:9000
+
+## API Endpoints
+
+### Public Masking APIs
+
+#### Face Masking
+```http
+POST /api/mask/face
+Content-Type: multipart/form-data
+
+file: <image_file>
+```
+Returns face bounding boxes in format: `{data: [[x1,y1,x2,y2], ...]}`
+
+#### Location Masking  
+```http
+POST /api/mask/location
+Content-Type: multipart/form-data
+
+file: <image_file>
+```
+Returns location object bounding boxes in format: `{data: [[x1,y1,x2,y2], ...]}`
+
+#### PII Masking
+```http
+POST /api/mask/pii
+Content-Type: multipart/form-data
+
+file: <image_file>
+ocr_values: <json_string>
+```
+OCR values format:
+```json
+[
+  {
+    "text": "john@example.com",
+    "bbox": [100, 200, 300, 220],
+    "confidence": 0.95
+  }
+]
+```
+Returns PII bounding boxes in format: `{data: [[x1,y1,x2,y2], ...]}`
+
+### Health Check
+```http
+GET /v1/health
+```
+Returns health status of all services.
+
+## Development
+
+### Project Structure
+```
+├── app.py                 # API Gateway
+├── docker-compose.yml     # Service orchestration
+├── Dockerfile            # Gateway container
+├── requirements.txt      # Gateway dependencies
+├── services/
+│   ├── yolo/            # Computer vision service
+│   │   ├── yolo.py      # YOLO service implementation
+│   │   ├── Dockerfile   # YOLO container
+│   │   ├── requirements.txt
+│   │   └── models/      # AI models
+│   └── llm/             # Language model service
+│       ├── pii.py       # PII detection service
+│       ├── Dockerfile   # LLM container
+│       └── requirements.txt
+```
+
+### Service Communication
+
+Services communicate via HTTP within the Docker network:
+- API Gateway → YOLO Service: `http://yolo-service:7000`
+- API Gateway → LLM Service: `http://llm-service:9000`
+
+### Environment Variables
+
+- `OPENAI_API_KEY`: Required for LLM service
+- `YOLO_SERVICE_URL`: Internal YOLO service URL
+- `LLM_SERVICE_URL`: Internal LLM service URL
+
+### Useful Commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Restart specific service
+docker compose restart yolo-service
+
+# Stop all services
+docker compose down
+
+# Rebuild and restart
+docker compose up --build
+
+# Check service health
+curl http://localhost:5000/v1/health
+```
+
+## Troubleshooting
+
+1. **OpenAI API Key Issues**: Ensure your API key is properly set in `.env`
+2. **Service Not Starting**: Check logs with `docker-compose logs <service-name>`
+3. **Port Conflicts**: Ensure ports 5000, 7000, and 9000 are available
+4. **Model Loading**: YOLO models are downloaded automatically on first run
+
+## Contributing
+
+1. Each service should be independently deployable
+2. Use environment variables for configuration
+3. Include health check endpoints
+4. Follow REST API conventions
+5. Add proper error handling and logging
 
 1. **API Gateway** (`api-gateway`) - Port 5000
    - Main entry point for all AI inference requests

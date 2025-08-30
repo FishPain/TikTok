@@ -10,10 +10,10 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - YOLO_SERVICE_URL=http://yolo-service:7000
-      - OPENAI_SERVICE_URL=http://openai-service:9000
+      - LLM_SERVICE_URL=http://llm-service:9000
     depends_on:
       - yolo-service
-      - openai-service
+      - llm-service
     restart: unless-stopped
     networks:
       - ai-network
@@ -21,23 +21,23 @@ services:
   # YOLO Object Detection Service (for face and location masking)
   yolo-service:
     build:
-      context: ./src/services/yolo
-      dockerfile: Dockerfile.yolo
+      context: ./services/yolo
+      dockerfile: Dockerfile
     container_name: yolo-service
     ports:
       - "7000:7000"
     volumes:
-      - ./models:/app/models
+      - ./services/yolo/models:/app/models
     restart: unless-stopped
     networks:
       - ai-network
 
-  # OpenAI Service (for chat and PII detection)
-  openai-service:
+  # LLM Service (for PII detection)
+  llm-service:
     build:
-      context: ./src/services/openai
-      dockerfile: Dockerfile.openai
-    container_name: openai-service
+      context: ./services/llm
+      dockerfile: Dockerfile
+    container_name: llm-service
     ports:
       - "9000:9000"
     environment:
@@ -46,23 +46,6 @@ services:
     networks:
       - ai-network
 
-  # Age Detection Service (for minor protection with YOLO + age models)
-  age-detection-service:
-    build:
-      context: ./src/services/age
-      dockerfile: Dockerfile
-    container_name: age-detection-service
-    ports:
-      - "5100:5100"
-    volumes:
-      - ./models:/app/models
-    restart: unless-stopped
-    networks:
-      - ai-network
-
 networks:
   ai-network:
     driver: bridge
-
-volumes:
-  models:
