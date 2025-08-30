@@ -32,19 +32,19 @@ def detect_faces_in_image(image_data: bytes) -> List[Tuple[float, float, float, 
             timeout=180,
         )
         if response.status_code == 200:
-            result = response.json()
-            detections = result.get("detections", [])
+            results = response.json()
+            detections = results.get("faces", [])
             face_boxes = []
             for det in detections:
-                class_name = det.get("class", "").lower()
-                if "face" in class_name:
+                # logger.info(f"YOLO detection: {det}")
+                if det.get("is_minor", False) is True:
                     bbox = det.get("bbox", {})
                     face_boxes.append(
                         (
-                            float(bbox.get("x1", 0)),
-                            float(bbox.get("y1", 0)),
-                            float(bbox.get("x2", 0)),
-                            float(bbox.get("y2", 0)),
+                            float(bbox[0]),
+                            float(bbox[1]),
+                            float(bbox[2]),
+                            float(bbox[3]),
                         )
                     )
             return face_boxes
