@@ -162,6 +162,25 @@ TikTok/
         └── requirements.txt
 ```
 
+### Service Communication Flow
+
+```mermaid
+graph TD
+    A[Client Request] --> B[API Gateway :8000]
+    B --> C{Request Type}
+    C -->|Face Detection| D[YOLO Service :8100]
+    C -->|PII Analysis| E[LLM Service :8200]
+    C -->|Location Analysis| F[Location Service :8300]
+    D --> G[YOLOv8 + Age Classification]
+    E --> H[OpenAI GPT Analysis]
+    F --> I[Gemini Multimodal AI]
+    G --> J[Coordinate Response]
+    H --> J
+    I --> J
+    J --> B
+    B --> K[Unified Response]
+```
+
 ## Development
 
 ### Service Communication
