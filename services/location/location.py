@@ -8,12 +8,30 @@ from google import genai
 from google.genai import types
 from uuid import uuid4
 import re
+from functools import wraps
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("privacy-edit-api")
 
 app = Flask(__name__)
+
+# API Key for authentication
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "IAMASECRET")
+
+
+def require_api_key(f):
+    """Decorator to check for valid API key in x-api-key header"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("x-api-key")
+        if not api_key or api_key != API_SECRET_KEY:
+            return jsonify({"error": "Unauthorized - Invalid or missing API key"}), 401
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 
 # Instantiate Gemini client (expects GOOGLE_API_KEY in env if needed by your setup)
 client = genai.Client()
@@ -66,8 +84,6 @@ You are a privacy-protection assistant. Analyze the given image carefully and pr
 # -----------------------------
 # Utilities
 # -----------------------------
-
-
 def detect_content_type_from_data_url(b64_string: str) -> str:
     match = re.match(r"^data:(.*?);base64,", b64_string)
     if match:
@@ -75,21 +91,19 @@ def detect_content_type_from_data_url(b64_string: str) -> str:
     return "application/octet-stream"
 
 
-def upload_base64_to_s3(
-    b64_string: str,
-):
+def upload_base64_to_s3(b64_string: str) -> str:
     """
-    Uploads a base64 string to an S3 bucket.
+    Uploads a base64 string to an S3 bucket and returns a URL.
 
     Args:
-        b64_string (str): The base64 string of the file (can include a data URL prefix).
+        b64_string (str): The base64 string (can include data URL prefix).
 
     Returns:
-        None
+        str: URL to download the file
     """
-    content_type = detect_content_type_from_data_url(b64_string)
+    content_type = "image/jpeg"
 
-    # Strip off data URL prefix if present (e.g. "data:image/png;base64,....")
+    # Strip off data URL prefix if present
     if b64_string.startswith("data:"):
         b64_string = b64_string.split(",", 1)[-1]
 
@@ -100,20 +114,24 @@ def upload_base64_to_s3(
     upload_prefix = os.environ.get("S3_UPLOAD_PATH", "uploads/")
     if not upload_prefix.endswith("/"):
         upload_prefix += "/"
-    upload_key = f"{upload_prefix}{uuid4().hex}.png"
+    ext = content_type.split("/")[-1] if "/" in content_type else "bin"
+    upload_key = f"{upload_prefix}{uuid4().hex}.{ext}"
 
-    # Upload to S3
+    # Upload
+    bucket = os.environ.get("BUCKET_NAME", "2025tiktoktechjam2025")
     s3 = boto3.client("s3")
-    location = s3.put_object(
-        Bucket=os.environ.get("BUCKET_NAME", "2025tiktoktechjam2025"),
+    s3.put_object(
+        Bucket=bucket,
         Key=upload_key,
         Body=file_bytes,
         ContentType=content_type,
     )
-    logger.info(
-        f"✅ Uploaded {upload_key} to bucket {os.environ.get('BUCKET_NAME', '2025tiktoktechjam2025')}"
-    )
-    return location
+
+    logger.info(f"✅ Uploaded {upload_key} ({content_type}) to bucket {bucket}")
+
+    # Return the public S3 URL
+    region = boto3.session.Session().region_name or "us-east-1"
+    return f"https://{bucket}.s3.{region}.amazonaws.com/{upload_key}"
 
 
 def _read_image_to_pil(file_storage):
@@ -156,7 +174,15 @@ def _extract_first_inline_image(generation):
 # -----------------------------
 # API Endpoint
 # -----------------------------
+@app.route("/health", methods=["GET"])
+@require_api_key
+def health():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy", "service": "location-service"})
+
+
 @app.route("/location/hide", methods=["POST"])
+@require_api_key
 def edit_image():
     """
     Multipart form-data:

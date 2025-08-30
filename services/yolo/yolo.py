@@ -4,18 +4,35 @@ import numpy as np
 from PIL import Image
 import easyocr
 from ultralytics import YOLO
-import ssl
 from typing import List, Tuple
 import os
 import io
 import base64
 import logging
+from functools import wraps
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# API Key for authentication
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "IAMASECRET")
+
+
+def require_api_key(f):
+    """Decorator to check for valid API key in x-api-key header"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("x-api-key")
+        if not api_key or api_key != API_SECRET_KEY:
+            return jsonify({"error": "Unauthorized - Invalid or missing API key"}), 401
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 
 # ---- Age model (OpenCV DNN) ----
 AGE_PROTOTXT = "/app/models/age_deploy.prototxt"
@@ -404,6 +421,7 @@ def base64_to_image(base64_string):
 
 
 @app.route("/health")
+@require_api_key
 def health():
     """Health check endpoint"""
     status = {
@@ -420,6 +438,7 @@ def health():
 
 
 @app.route("/detect/age", methods=["POST"])
+@require_api_key
 def detect_age_endpoint():
     """Detect age for faces in image"""
     if "file" not in request.files:
@@ -471,6 +490,7 @@ def detect_age_endpoint():
 
 
 @app.route("/detect", methods=["POST"])
+@require_api_key
 def detect_objects():
     """Detect only location-related objects (ignore faces)"""
     if "file" not in request.files:
@@ -556,6 +576,7 @@ def detect_objects():
 
 
 @app.route("/process/text", methods=["POST"])
+@require_api_key
 def get_text_endpoint():
     """Detect text regions"""
     if "file" not in request.files:
@@ -583,6 +604,7 @@ def get_text_endpoint():
 
 
 @app.route("/process/blur-plates", methods=["POST"])
+@require_api_key
 def blur_plates_endpoint():
     """Detect license plates"""
     if "file" not in request.files:
@@ -609,6 +631,7 @@ def blur_plates_endpoint():
 
 
 @app.route("/process/blur-qr", methods=["POST"])
+@require_api_key
 def blur_qr_endpoint():
     """Detect QR codes"""
     if "file" not in request.files:
@@ -633,6 +656,7 @@ def blur_qr_endpoint():
 
 
 @app.route("/", methods=["GET"])
+@require_api_key
 def index():
     """API documentation"""
     return jsonify(

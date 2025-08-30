@@ -14,6 +14,12 @@ SERVICES = {
     "location": os.getenv("LOCATION_SERVICE_URL", "http://location-service:8300"),
 }
 
+# API Key for service-to-service communication
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "IAMASECRET")
+
+# Common headers for all service requests
+HEADERS = {"x-api-key": API_SECRET_KEY}
+
 
 # --- existing helpers (unchanged) ---
 def detect_faces_in_image(image_data: bytes) -> List[Tuple[float, float, float, float]]:
@@ -22,6 +28,7 @@ def detect_faces_in_image(image_data: bytes) -> List[Tuple[float, float, float, 
             f"{SERVICES['yolo']}/detect/age",
             files={"file": ("image.jpg", image_data, "image/jpeg")},
             data={"type": "faces"},
+            headers=HEADERS,
             timeout=180,
         )
         if response.status_code == 200:
@@ -56,16 +63,17 @@ def detect_location_in_image(
             f"{SERVICES['location']}/location/hide",
             files={"image": ("image.jpg", image_data, "image/jpeg")},
             data={"type": "general"},
+            headers=HEADERS,
             timeout=180,
         )
         if response.status_code == 200:
             result = response.json()
-            return result.get("image_path", [])
+            return result.get("image_path", "")
         else:
             logger.error(f"Location service error: {response.status_code}")
     except Exception as e:
         logger.error(f"Location service call failed: {e}")
-    return []
+    return ""
 
 
 def detect_pii_in_ocr(
@@ -103,6 +111,7 @@ def detect_pii_in_ocr(
         f"{SERVICES['llm']}/classify/pii",
         files=files,
         data=form,
+        headers=HEADERS,
         timeout=180,
     )
 
@@ -175,7 +184,10 @@ def get_vulnerabilities(image_data: bytes) -> List[str]:
 
     try:
         resp = requests.post(
-            f"{SERVICES['llm']}/classify/vulnerability", files=files, timeout=180
+            f"{SERVICES['llm']}/classify/vulnerability",
+            files=files,
+            headers=HEADERS,
+            timeout=180,
         )
         if resp.status_code == 200:
             payload = resp.json()
@@ -228,7 +240,10 @@ def extract_ocr_values(image_data: bytes) -> Optional[List[Dict[str, Any]]]:
     files = {"file": ("image.jpg", image_data, "image/jpeg")}
     try:
         resp = requests.post(
-            f"{SERVICES['yolo']}/process/text", files=files, timeout=180
+            f"{SERVICES['yolo']}/process/text",
+            files=files,
+            headers=HEADERS,
+            timeout=180,
         )
         if resp.status_code == 200:
             return resp.json()

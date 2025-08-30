@@ -10,6 +10,12 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BUCKET_NAME=${BUCKET_NAME}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_UPLOAD_PATH=${S3_UPLOAD_PATH}
+      - API_SECRET_KEY=${API_SECRET_KEY:-IAMASECRET}
       - YOLO_SERVICE_URL=http://yolo-service:8100
       - LLM_SERVICE_URL=http://llm-service:8200
       - LOCATION_SERVICE_URL=http://location-service:8300
@@ -28,6 +34,8 @@ services:
     container_name: yolo-service
     ports:
       - "8100:8100"
+    environment:
+      - API_SECRET_KEY=${API_SECRET_KEY:-IAMASECRET}
     volumes:
       - ./services/yolo/models:/app/models
     restart: unless-stopped
@@ -43,6 +51,7 @@ services:
       - "8200:8200"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - API_SECRET_KEY=${API_SECRET_KEY:-IAMASECRET}
     restart: unless-stopped
     networks:
       - ai-network
@@ -56,6 +65,11 @@ services:
       - "8300:8300"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - BUCKET_NAME=${BUCKET_NAME}
+      - API_SECRET_KEY=${API_SECRET_KEY:-IAMASECRET}
     restart: unless-stopped
     networks:
       - ai-network

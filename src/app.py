@@ -4,6 +4,7 @@ import requests
 import logging
 import os
 import json
+from functools import wraps
 from helper import (
     detect_faces_in_image,
     detect_location_in_image,
@@ -18,6 +19,22 @@ SERVICES = {
     "llm": os.getenv("LLM_SERVICE_URL", "http://llm-service:8200"),
     "location": os.getenv("LOCATION_SERVICE_URL", "http://location-service:8300"),
 }
+
+# API Key for authentication
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "IAMASECRET")
+
+
+def require_api_key(f):
+    """Decorator to check for valid API key in x-api-key header"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("x-api-key")
+        if not api_key or api_key != API_SECRET_KEY:
+            return {"error": "Unauthorized - Invalid or missing API key"}, 401
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 # Setup logging
@@ -99,10 +116,9 @@ privacy_masks_response = api.model(
             allow_null=True,
             description="Face masks or null",
         ),
-        "location": fields.Nested(
-            mask_group_model,
-            allow_null=True,
-            description="Location masks or null",
+        "location": fields.String(
+            required=False,
+            description="Regenerated image URL or base64 string (or null)",
         ),
         "pii": fields.Nested(
             mask_group_model,
@@ -115,6 +131,7 @@ privacy_masks_response = api.model(
 
 @ns_v1.route("/health")
 class Health(Resource):
+    @require_api_key
     def get(self):
         """Health check for all services"""
         health_status = {}
@@ -147,6 +164,7 @@ class FaceMask(Resource):
         )
     )
     @ns_api.marshal_with(mask_response)
+    @require_api_key
     def post(self):
         """
         Detect faces in image and return structured mask data
@@ -187,6 +205,7 @@ class LocationMask(Resource):
         )
     )
     @ns_api.marshal_with(mask_response)
+    @require_api_key
     def post(self):
         """
         Detect location-related content in image and return structured mask data
@@ -228,6 +247,7 @@ class PIIMask(Resource):
         )
     )
     @ns_api.marshal_with(mask_response)
+    @require_api_key
     def post(self):
         """
         Detect PII in OCR values and return structured mask data
@@ -282,6 +302,7 @@ class PrivacyPipeline(Resource):
         )
     )
     @ns_api.marshal_with(privacy_masks_response, skip_none=False)
+    @require_api_key
     def post(self):
         """
         Detect all privacy-related content and return masks in structured form.

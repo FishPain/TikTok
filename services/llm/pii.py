@@ -5,6 +5,7 @@ from typing import List, Literal, Optional
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage
 from pydantic import BaseModel, Field
+from functools import wraps
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO)
@@ -164,13 +165,31 @@ llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-2024-11-20"), temperatu
 # --- Flask App ---
 app = Flask(__name__)
 
+# API Key for authentication
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "IAMASECRET")
+
+
+def require_api_key(f):
+    """Decorator to check for valid API key in x-api-key header"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("x-api-key")
+        if not api_key or api_key != API_SECRET_KEY:
+            return jsonify({"error": "Unauthorized - Invalid or missing API key"}), 401
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 
 @app.route("/health", methods=["GET"])
+@require_api_key
 def health():
     return jsonify({"status": "ok", "model": llm.model_name})
 
 
 @app.route("/classify/pii", methods=["POST"])
+@require_api_key
 def classify_pii():
     if "file" not in request.files:
         return jsonify({"error": "Missing 'file' (image)"}), 400
@@ -237,6 +256,7 @@ def classify_pii():
 
 
 @app.route("/classify/vulnerability", methods=["POST"])
+@require_api_key
 def classify_vulnerability():
     """
     POST /classify/vulnerability
@@ -288,6 +308,7 @@ def classify_vulnerability():
 
 
 @app.route("/", methods=["GET"])
+@require_api_key
 def index():
     """API documentation"""
     return jsonify(
