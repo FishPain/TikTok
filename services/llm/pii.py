@@ -1,7 +1,7 @@
 import os, io, json, base64, logging, re
 from flask import Flask, request, jsonify
 from PIL import Image, ImageOps
-from typing import List, Literal, Optional
+from typing import List, Literal
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage
 from pydantic import BaseModel, Field

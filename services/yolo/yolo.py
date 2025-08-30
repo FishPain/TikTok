@@ -6,7 +6,6 @@ import easyocr
 from ultralytics import YOLO
 from typing import List, Tuple
 import os
-import io
 import base64
 import logging
 from functools import wraps
