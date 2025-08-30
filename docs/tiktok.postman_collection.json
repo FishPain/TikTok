@@ -1,0 +1,327 @@
+{
+	"info": {
+		"_postman_id": "01631876-8683-4803-82f2-df2203dcd829",
+		"name": "tiktok",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23536417"
+	},
+	"item": [
+		{
+			"name": "yolo",
+			"item": [
+				{
+					"name": "docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:8100",
+							"host": [
+								"localhost"
+							],
+							"port": "8100"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:8100/health",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "detect age",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/istockphoto-1369527256-612x612.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8100/detect/age",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"detect",
+								"age"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "blur plates",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/photo_6073202310982514755_x.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8100/process/blur-plates",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"process",
+								"blur-plates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "blur qr",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/images.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8100/process/blur-qr",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"process",
+								"blur-qr"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get text",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/data/block_sign.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8100/process/text",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"process",
+								"text"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "llm",
+			"item": [
+				{
+					"name": "docs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:8200",
+							"host": [
+								"localhost"
+							],
+							"port": "8200"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:8200/health",
+							"host": [
+								"localhost"
+							],
+							"port": "8200",
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "detect pii",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/data/fakeic.png"
+								},
+								{
+									"key": "ocr",
+									"value": "[\"SINGAPORE\", \"REPUBLIC\", \"S1234567D\", \"REGISTRATION\", \"NATIONAL\", \"IDENTITY\", \"BEDOK\", \"#12-34\", \"1980\", \"TAN\", \"FEB\", \"CARD\", \"KAI\", \"SITEADRO\", \"Address\", \"OF\", \"123\", \"AH\", \"NRIC\", \"Birth\", \"Date\", \"NEpUQORA\", \"No=\", \"of\"]",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8200/classify/pii",
+							"host": [
+								"localhost"
+							],
+							"port": "8200",
+							"path": [
+								"classify",
+								"pii"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "vulnerability",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/ifish/Downloads/data/block_sign.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8200/classify/vulnerability",
+							"host": [
+								"localhost"
+							],
+							"port": "8200",
+							"path": [
+								"classify",
+								"vulnerability"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "gateway",
+			"item": [
+				{
+					"name": "all",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "localhost:8100/api/mask/all",
+							"host": [
+								"localhost"
+							],
+							"port": "8100",
+							"path": [
+								"api",
+								"mask",
+								"all"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "location",
+			"item": [
+				{
+					"name": "hide location",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": "/Users/ifish/Desktop/Screenshot 2025-08-30 at 10.23.43 PM.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:8300/location/hide",
+							"host": [
+								"localhost"
+							],
+							"port": "8300",
+							"path": [
+								"location",
+								"hide"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
