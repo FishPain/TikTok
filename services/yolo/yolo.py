@@ -258,27 +258,46 @@ def is_minor(
 
 
 # --- Other detectors ---
-def detect_text(image_rgb: np.ndarray):
+def detect_text(image_rgb: np.ndarray) -> List[Tuple[int, int, int, int, str]]:
+    """
+    Detect text regions with EasyOCR and return list of (x1, y1, w, h, text).
+    """
     if reader is None:
         return []
 
     results = reader.readtext(image_rgb)
-    boxes = []
+    boxes: List[Tuple[int, int, int, int, str]] = []
     H, W = image_rgb.shape[:2]
+
     for r in results:
-        pts = r[0]
+        pts, text = r[0], r[1]
         xs = [int(p[0]) for p in pts]
         ys = [int(p[1]) for p in pts]
-        x1, y1, x2, y2 = (
-            max(0, min(xs)),
-            max(0, min(ys)),
-            min(W, max(xs)),
-            min(H, max(ys)),
-        )
+        x1, y1 = max(0, min(xs)), max(0, min(ys))
+        x2, y2 = min(W, max(xs)), min(H, max(ys))
+
         w, h = max(0, x2 - x1), max(0, y2 - y1)
         if w > 0 and h > 0:
-            boxes.append((x1, y1, w, h))
-    return _merge_boxes(boxes, iou_thresh=0.2)
+            boxes.append((x1, y1, w, h, text))
+
+    # If you still want merging, pass only coords to _merge_boxes
+    merged = _merge_boxes([b[:4] for b in boxes], iou_thresh=0.2)
+
+    # Attach text back to merged boxes (simple heuristic: keep original texts of boxes that overlap)
+    merged_with_text: List[Tuple[int, int, int, int, str]] = []
+    for mx1, my1, mw, mh in merged:
+        # find first matching text from original boxes
+        match = next(
+            (
+                t
+                for (x1, y1, w, h, t) in boxes
+                if abs(x1 - mx1) < 5 and abs(y1 - my1) < 5
+            ),
+            "",
+        )
+        merged_with_text.append((mx1, my1, mw, mh, match))
+
+    return merged_with_text
 
 
 def detect_license_plates(image_bgr: np.ndarray):
@@ -524,8 +543,8 @@ def detect_objects():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/process/blur-text", methods=["POST"])
-def blur_text_endpoint():
+@app.route("/process/text", methods=["POST"])
+def get_text_endpoint():
     """Detect text regions"""
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -541,7 +560,8 @@ def blur_text_endpoint():
             {
                 "type": "text",
                 "total": len(text_boxes),
-                "boxes": [list(b) for b in text_boxes],
+                "bbox": [list(b[:4]) for b in text_boxes],
+                "text": [b[4] for b in text_boxes],
             }
         )
 

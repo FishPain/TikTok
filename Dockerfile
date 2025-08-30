@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY app.py .
+COPY src/ .
 
 EXPOSE 8000
 CMD ["python", "app.py"]
