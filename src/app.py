@@ -41,12 +41,17 @@ def require_api_key(f):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+authorizations = {"apikey": {"type": "apiKey", "in": "header", "name": "x-api-key"}}
+
 app = Flask(__name__)
 api = Api(
     app,
     version="1.0",
-    title="AI Microservices Gateway",
-    description="Gateway for AI inference microservices with public masking APIs",
+    title="PII Classification Service",
+    description="Classifies OCR text and image vulnerabilities",
+    authorizations=authorizations,
+    security="apikey",  # <-- requires api key by default
 )
 
 # Namespaces
@@ -137,7 +142,11 @@ class Health(Resource):
         health_status = {}
         for service_name, service_url in SERVICES.items():
             try:
-                response = requests.get(f"{service_url}/health", timeout=5)
+                response = requests.get(
+                    f"{service_url}/health",
+                    timeout=5,
+                    headers={"x-api-key": API_SECRET_KEY},
+                )
                 health_status[service_name] = {
                     "status": "healthy" if response.status_code == 200 else "unhealthy",
                     "response_time": response.elapsed.total_seconds(),
