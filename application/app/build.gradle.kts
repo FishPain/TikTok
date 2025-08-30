@@ -14,8 +14,21 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packagingOptions {
+        resources {
+            pickFirsts += listOf(
+                "lib/armeabi-v7a/libmediapipe_tasks_vision_jni.so",
+                "lib/arm64-v8a/libmediapipe_tasks_vision_jni.so",
+                "lib/armeabi-v7a/libmediapipe_jni.so",
+                "lib/arm64-v8a/libmediapipe_jni.so"
+            )
+        }
     }
 
     buildTypes {
@@ -36,11 +49,26 @@ android {
     }
     buildFeatures {
         compose = true
+        mlModelBinding = true
     }
 }
 
 dependencies {
 
+    // MLKit Text Recognition v2 imports for PII function, only doing English for now
+    implementation(libs.text.recognition)
+//    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+//    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+//    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+//    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+
+    // MediaPipe Face Detection for face localization
+    implementation(libs.tasks.vision)
+    implementation(libs.androidx.exifinterface)
+    
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -49,6 +77,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.play.services.mlkit.face.detection)
+    implementation(libs.litert.support.api)
+    implementation(libs.litert)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
