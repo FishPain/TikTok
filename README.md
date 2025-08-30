@@ -53,9 +53,9 @@ This project consists of three main services:
 
 Once running, you can access:
 
-- **API Gateway**: http://localhost:5000 (Swagger UI available)
-- **YOLO Service**: http://localhost:7000 
-- **LLM Service**: http://localhost:9000
+- **API Gateway**: http://localhost:8000 (Swagger UI available)
+- **YOLO Service**: http://localhost:8100
+- **LLM Service**: http://localhost:8200
 
 ## API Endpoints
 
@@ -128,8 +128,8 @@ Returns health status of all services.
 ### Service Communication
 
 Services communicate via HTTP within the Docker network:
-- API Gateway → YOLO Service: `http://yolo-service:7000`
-- API Gateway → LLM Service: `http://llm-service:9000`
+- API Gateway → YOLO Service: `http://yolo-service:8100`
+- API Gateway → LLM Service: `http://llm-service:8200`
 
 ### Environment Variables
 
@@ -153,14 +153,14 @@ docker compose down
 docker compose up --build
 
 # Check service health
-curl http://localhost:5000/v1/health
+curl http://localhost:8000/v1/health
 ```
 
 ## Troubleshooting
 
 1. **OpenAI API Key Issues**: Ensure your API key is properly set in `.env`
 2. **Service Not Starting**: Check logs with `docker-compose logs <service-name>`
-3. **Port Conflicts**: Ensure ports 5000, 7000, and 9000 are available
+3. **Port Conflicts**: Ensure ports 8000, 8100, and 8200 are available
 4. **Model Loading**: YOLO models are downloaded automatically on first run
 
 ## Contributing
@@ -171,23 +171,23 @@ curl http://localhost:5000/v1/health
 4. Follow REST API conventions
 5. Add proper error handling and logging
 
-1. **API Gateway** (`api-gateway`) - Port 5000
+1. **API Gateway** (`api-gateway`) - Port 8000
    - Main entry point for all AI inference requests
    - Routes requests to appropriate microservices
    - Provides health monitoring and service orchestration
    - Built with Flask and Flask-RESTX (Swagger documentation)
 
-2. **YOLO Object Detection Service** (`yolo-service`) - Port 7000
+2. **YOLO Object Detection Service** (`yolo-service`) - Port 8100
    - YOLOv5 model for object detection
    - Powers face detection and location masking
    - Returns bounding boxes, class labels, and confidence scores
 
-3. **OpenAI Service** (`openai-service`) - Port 9000
+3. **OpenAI Service** (`openai-service`) - Port 8200
    - Proxy service for OpenAI API calls
    - Handles chat completions and PII detection
    - Manages API key and error handling
 
-4. **Age Detection Service** (`age-detection-service`) - Port 5100
+4. **Age Detection Service** (`age-detection-service`) - Port 8100
    - Combines YOLO and age classification models
    - Selective face blurring for minor protection
    - Advanced privacy features with text/plate/QR detection
@@ -265,14 +265,14 @@ docker-compose up yolo-service
 
 ### Health Check
 ```bash
-curl -X GET http://localhost:5000/v1/health
+curl -X GET http://localhost:8000/v1/health
 ```
 
 ### Public Masking APIs
 
 #### Face Masking
 ```bash
-curl -X POST -F "file=@image.jpg" http://localhost:5000/api/mask/face
+curl -X POST -F "file=@image.jpg" http://localhost:8000/api/mask/face
 ```
 Response format:
 ```json
@@ -286,7 +286,7 @@ Response format:
 
 #### Location Masking
 ```bash
-curl -X POST -F "file=@image.jpg" http://localhost:5000/api/mask/location
+curl -X POST -F "file=@image.jpg" http://localhost:8000/api/mask/location
 ```
 Response format:
 ```json
@@ -303,7 +303,7 @@ Response format:
 curl -X POST \
   -F "file=@image.jpg" \
   -F 'ocr_values=[{"text": "john@email.com", "bbox": [100, 200, 300, 220], "confidence": 0.95}]' \
-  http://localhost:5000/api/mask/pii
+  http://localhost:8000/api/mask/pii
 ```
 Response format:
 ```json
@@ -317,7 +317,7 @@ Response format:
 
 ### Chat Completion
 ```bash
-curl -X POST http://localhost:5000/v1/chat/completions \
+curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-3.5-turbo",
@@ -330,7 +330,7 @@ curl -X POST http://localhost:5000/v1/chat/completions \
 ## API Documentation
 
 Once the services are running, you can access the interactive API documentation at:
-- **Swagger UI**: http://localhost:5000/
+- **Swagger UI**: http://localhost:8000/
 
 ## Service Details
 

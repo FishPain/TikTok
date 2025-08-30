@@ -6,11 +6,11 @@ services:
     build: .
     container_name: ai-api-gateway
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - YOLO_SERVICE_URL=http://yolo-service:7000
-      - LLM_SERVICE_URL=http://llm-service:9000
+      - YOLO_SERVICE_URL=http://yolo-service:8100
+      - LLM_SERVICE_URL=http://llm-service:8200
     depends_on:
       - yolo-service
       - llm-service
@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     container_name: yolo-service
     ports:
-      - "7000:7000"
+      - "8100:8100"
     volumes:
       - ./services/yolo/models:/app/models
     restart: unless-stopped
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: llm-service
     ports:
-      - "9000:9000"
+      - "8200:8200"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     restart: unless-stopped

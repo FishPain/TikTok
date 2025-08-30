@@ -87,7 +87,7 @@ Complete privacy processing with minor face blurring and optional text/plate/QR 
    docker compose up age-detection-service --build
    ```
 
-2. **Service will be available at:** `http://localhost:5100`
+2. **Service will be available at:** `http://localhost:8100`
 
 ### Local Development
 
@@ -115,23 +115,23 @@ python test_age_api.py
 
 ```bash
 # Health check
-curl -X GET http://localhost:5100/health
+curl -X GET http://localhost:8100/health
 
 # Detect faces
-curl -X POST -F 'file=@image.jpg' http://localhost:5100/detect/faces
+curl -X POST -F 'file=@image.jpg' http://localhost:8100/detect/faces
 
 # Detect age
-curl -X POST -F 'file=@image.jpg' -F 'yolo_conf=0.4' http://localhost:5100/detect/age
+curl -X POST -F 'file=@image.jpg' -F 'yolo_conf=0.4' http://localhost:8100/detect/age
 
 # Blur minors only
-curl -X POST -F 'file=@image.jpg' -F 'return_image=true' http://localhost:5100/process/blur-minors
+curl -X POST -F 'file=@image.jpg' -F 'return_image=true' http://localhost:8100/process/blur-minors
 
 # Full privacy processing
 curl -X POST -F 'file=@image.jpg' 
      -F 'blur_text=true' 
      -F 'blur_plates=true' 
      -F 'blur_qr=true' 
-     http://localhost:5100/process/privacy-full
+     http://localhost:8100/process/privacy-full
 ```
 
 ### Python Example
@@ -142,7 +142,7 @@ import requests
 # Upload and process image
 with open('family_photo.jpg', 'rb') as f:
     response = requests.post(
-        'http://localhost:5100/process/blur-minors',
+        'http://localhost:8100/process/blur-minors',
         files={'file': f},
         data={'yolo_conf': 0.4, 'return_image': 'true'}
     )
@@ -185,7 +185,7 @@ The service maintains the same core functionality as the original Streamlit appl
 
 ## Integration Notes
 
-- Service runs on port 5100 by default
+- Service runs on port 8100 by default
 - All endpoints accept standard multipart form uploads
 - Images can be returned as base64-encoded strings
 - JSON responses include detailed detection metadata

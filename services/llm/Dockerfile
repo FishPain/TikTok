@@ -27,7 +27,7 @@ ENV FLASK_ENV=production
 ENV OPENAI_MODEL="gpt-4o-2024-11-20"
 
 # Expose port
-EXPOSE 9000
+EXPOSE 8200
 
 # Run service
 CMD ["python", "pii.py"]

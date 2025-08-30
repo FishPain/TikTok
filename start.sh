@@ -35,33 +35,33 @@ sleep 10
 echo "🏥 Checking service health..."
 
 # Check API Gateway
-if curl -f http://localhost:5000/v1/health > /dev/null 2>&1; then
-    echo "✅ API Gateway is healthy (port 5000)"
+if curl -f http://localhost:8000/v1/health > /dev/null 2>&1; then
+    echo "✅ API Gateway is healthy (port 8000)"
 else
-    echo "❌ API Gateway is not responding (port 5000)"
+    echo "❌ API Gateway is not responding (port 8000)"
 fi
 
 # Check YOLO Service
-if curl -f http://localhost:7000/health > /dev/null 2>&1; then
-    echo "✅ YOLO Service is healthy (port 7000)"
+if curl -f http://localhost:8100/health > /dev/null 2>&1; then
+    echo "✅ YOLO Service is healthy (port 8100)"
 else
-    echo "❌ YOLO Service is not responding (port 7000)"
+    echo "❌ YOLO Service is not responding (port 8100)"
 fi
 
 # Check LLM Service
-if curl -f http://localhost:9000/health > /dev/null 2>&1; then
-    echo "✅ LLM Service is healthy (port 9000)"
+if curl -f http://localhost:8200/health > /dev/null 2>&1; then
+    echo "✅ LLM Service is healthy (port 8200)"
 else
-    echo "❌ LLM Service is not responding (port 9000)"
+    echo "❌ LLM Service is not responding (port 8200)"
 fi
 
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "📊 Service URLs:"
-echo "  • API Gateway (Swagger UI): http://localhost:5000"
-echo "  • YOLO Service: http://localhost:7000"
-echo "  • LLM Service: http://localhost:9000"
+echo "  • API Gateway (Swagger UI): http://localhost:8000"
+echo "  • YOLO Service: http://localhost:8100"
+echo "  • LLM Service: http://localhost:8200"
 echo ""
 echo "🔧 Useful commands:"
 echo "  • View logs: docker compose logs -f"

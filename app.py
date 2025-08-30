@@ -21,8 +21,8 @@ api = Api(
 
 # Service URLs from environment variables
 SERVICES = {
-    "yolo": os.getenv("YOLO_SERVICE_URL", "http://yolo-service:7000"),
-    "llm": os.getenv("LLM_SERVICE_URL", "http://llm-service:9000"),
+    "yolo": os.getenv("YOLO_SERVICE_URL", "http://yolo-service:8100"),
+    "llm": os.getenv("LLM_SERVICE_URL", "http://llm-service:8200"),
 }
 
 # Namespaces
@@ -399,4 +399,4 @@ class PIIMask(Resource):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

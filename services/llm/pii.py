@@ -191,7 +191,7 @@ def index():
                         ]
                     },
                     "example_curl": (
-                        "curl -X POST http://localhost:5200/classify/pii "
+                        "curl -X POST http://localhost:8200/classify/pii "
                         '-F "file=@test.jpg" '
                         '-F "ocr=@client_ocr.json"'
                     ),
@@ -207,4 +207,4 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=9000, debug=True)
+    app.run(host="0.0.0.0", port=8200, debug=True)
