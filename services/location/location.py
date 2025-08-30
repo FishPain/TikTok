@@ -222,7 +222,6 @@ def edit_image():
         image_b64 = base64.b64encode(img_bytes).decode("utf-8")
         path = upload_base64_to_s3(
             image_b64,
-            content_type="image/png",
         )
         return (
             jsonify(
