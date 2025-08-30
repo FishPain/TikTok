@@ -10,6 +10,9 @@ from helper import (
     detect_location_in_image,
     detect_pii_in_ocr,
     build_privacy_masks,
+    build_privacy_masks_as_urls,
+    process_face_masks,
+    process_pii_masks,
 )
 
 
@@ -64,7 +67,7 @@ mask_item_model = api.model(
     {
         "coordinate": fields.String(
             required=True,
-            description='Coordinate string in the form "(x1, x2, y1, y2)"',
+            description='Coordinate string in the form "(x1, y1, x2, y2)"',
             example="(100.5, 200.8, 150.2, 250.9)",
         ),
         "reason": fields.String(
@@ -75,14 +78,49 @@ mask_item_model = api.model(
     },
 )
 
+# New model for S3 URL response
+s3_mask_model = api.model(
+    "S3MaskResponse",
+    {
+        "masked_image_url": fields.String(
+            required=True,
+            description="S3 URL of the masked image",
+            example="https://bucket.s3.region.amazonaws.com/path/masked_image.jpg",
+        ),
+        "mask_count": fields.Integer(
+            required=True,
+            description="Number of masks applied",
+            example=2,
+        ),
+        "reason": fields.String(
+            required=True,
+            description="Reason for masking",
+            example="visible face",
+        ),
+    },
+)
+
+# Flexible response model that can handle both formats
 mask_response = api.model(
     "MaskResponse",
     {
         "mask": fields.List(
             fields.Nested(mask_item_model),
-            required=True,
-            description="List of mask items with coordinates and reasons",
-        )
+            required=False,
+            description="List of mask items with coordinates (fallback format)",
+        ),
+        "masked_image_url": fields.String(
+            required=False,
+            description="S3 URL of masked image (preferred format)",
+        ),
+        "mask_count": fields.Integer(
+            required=False,
+            description="Number of masks applied",
+        ),
+        "reason": fields.String(
+            required=False,
+            description="Reason for masking",
+        ),
     },
 )
 
@@ -116,19 +154,20 @@ mask_group_model = api.model(
 privacy_masks_response = api.model(
     "PrivacyMasksResponse",
     {
-        "face": fields.Nested(
-            mask_group_model,
-            allow_null=True,
-            description="Face masks or null",
+        "face": fields.String(
+            required=False,
+            description="S3 URL of face-masked image or null",
+            example="https://bucket.s3.amazonaws.com/path/face_masked_image.jpg",
         ),
         "location": fields.String(
             required=False,
-            description="Regenerated image URL or base64 string (or null)",
+            description="S3 URL of location-masked image or null",
+            example="https://bucket.s3.amazonaws.com/path/location_masked_image.jpg",
         ),
-        "pii": fields.Nested(
-            mask_group_model,
-            allow_null=True,
-            description="PII masks or null",
+        "pii": fields.String(
+            required=False,
+            description="S3 URL of PII-masked image or null",
+            example="https://bucket.s3.amazonaws.com/path/pii_masked_image.jpg",
         ),
     },
 )
@@ -176,10 +215,23 @@ class FaceMask(Resource):
     @require_api_key
     def post(self):
         """
-        Detect faces in image and return structured mask data
+        Detect faces in image and return masked image or coordinates
 
-        Returns structured mask data with coordinates and reasons in format:
-        {mask: [{coordinate: "(x1, x2, y1, y2)", reason: "visible face"}, ...]}
+        Returns either:
+        - S3 URL of masked image with blur applied to faces (preferred)
+        - Coordinate data for client-side masking (fallback)
+
+        Response format with S3:
+        {
+          "masked_image_url": "https://bucket.s3.amazonaws.com/path/image.jpg",
+          "mask_count": 2,
+          "reason": "visible face"
+        }
+
+        Fallback format:
+        {
+          "mask": [{"coordinate": "(x1, y1, x2, y2)", "reason": "visible face"}]
+        }
         """
         if "file" not in request.files:
             return {"error": "No file provided"}, 400
@@ -189,13 +241,8 @@ class FaceMask(Resource):
             # Read image data
             image_data = file.read()
 
-            # Detect faces
-            face_boxes = detect_faces_in_image(image_data)
-
-            # Convert to standardized format using helper function
-            from helper import _format_masks
-
-            result = _format_masks(face_boxes, reason="visible face")
+            # Process face masks (returns S3 URL or coordinates)
+            result = process_face_masks(image_data)
 
             # Return consistent structure (empty mask array if no detections)
             return result or {"mask": []}
@@ -259,13 +306,26 @@ class PIIMask(Resource):
     @require_api_key
     def post(self):
         """
-        Detect PII in OCR values and return structured mask data
+        Detect PII in OCR values and return masked image or coordinates
 
         Requires both image file and OCR values.
         OCR values should be in format: {"text": ["word1", "word2"], "bbox": [[x1,y1,x2,y2], [x1,y1,x2,y2]]}
 
-        Returns structured mask data with coordinates and reasons in format:
-        {mask: [{coordinate: "(x1, x2, y1, y2)", reason: "potential personal info"}, ...]}
+        Returns either:
+        - S3 URL of masked image with black rectangles over PII (preferred)
+        - Coordinate data for client-side masking (fallback)
+
+        Response format with S3:
+        {
+          "masked_image_url": "https://bucket.s3.amazonaws.com/path/image.jpg",
+          "mask_count": 3,
+          "reason": "potential personal info"
+        }
+
+        Fallback format:
+        {
+          "mask": [{"coordinate": "(x1, y1, x2, y2)", "reason": "potential personal info"}]
+        }
         """
         if "file" not in request.files:
             return {"error": "No file provided"}, 400
@@ -286,13 +346,8 @@ class PIIMask(Resource):
             except json.JSONDecodeError:
                 return {"error": "Invalid JSON format for ocr values"}, 400
 
-            # Detect PII in OCR values
-            pii_boxes = detect_pii_in_ocr(image_data, ocr_data)
-
-            # Convert to standardized format using helper function
-            from helper import _format_masks
-
-            result = _format_masks(pii_boxes, reason="potential personal info")
+            # Process PII masks (returns S3 URL or coordinates)
+            result = process_pii_masks(image_data, ocr_data)
 
             # Return consistent structure (empty mask array if no detections)
             return result or {"mask": []}
@@ -314,13 +369,19 @@ class PrivacyPipeline(Resource):
     @require_api_key
     def post(self):
         """
-        Detect all privacy-related content and return masks in structured form.
+        Detect all privacy-related content and return S3 URLs of masked images.
 
-        This endpoint combines the results of /mask/face, /mask/location, and /mask/pii
-        into a single response with the same structure format:
+        This endpoint combines face, location, and PII detection into a single response.
+        Returns S3 URLs of masked images for each detected vulnerability type.
 
-        Each category will be null if no vulnerabilities of that type are detected,
-        or will contain a mask array with coordinate and reason for each detection.
+        Response format:
+        {
+          "face": "https://bucket.s3.amazonaws.com/path/face_masked_image.jpg",
+          "location": "https://bucket.s3.amazonaws.com/path/location_masked_image.jpg",
+          "pii": "https://bucket.s3.amazonaws.com/path/pii_masked_image.jpg"
+        }
+
+        Fields will be null if no vulnerabilities of that type are detected.
         """
         if "file" not in request.files:
             return {"error": "No file provided"}, 400
@@ -330,10 +391,10 @@ class PrivacyPipeline(Resource):
         try:
             image_data = file.read()
 
-            # Build structured masks via your orchestrator
-            data = build_privacy_masks(image_data)
+            # Build S3 URLs for masked images
+            data = build_privacy_masks_as_urls(image_data)
 
-            # `data` must be a dict with keys face/location/pii -> {mask:[{coordinate,reason}]} or None
+            # Return dict with S3 URLs or null values
             return data
 
         except Exception as e:

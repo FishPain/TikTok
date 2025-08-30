@@ -473,6 +473,7 @@ def detect_age_endpoint():
                 "age_buckets": AGE_BUCKETS,
                 "age_probabilities": probs.tolist() if probs is not None else None,
             }
+            
             face_analysis.append(face_info)
 
         return jsonify(
