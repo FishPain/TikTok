@@ -51,7 +51,7 @@ api = Api(
     title="PII Classification Service",
     description="Classifies OCR text and image vulnerabilities",
     authorizations=authorizations,
-    security="apikey",  # <-- requires api key by default
+    security="apikey",
 )
 
 # Namespaces
