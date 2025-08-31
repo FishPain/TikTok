@@ -1,7 +1,9 @@
-package dev.xiaoxin.tiktok_jam_2025.ui.screens
+package dev.xiaoxin.vpshield.ui.screens
 
 import android.content.ContentValues
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.net.ConnectivityManager
@@ -12,6 +14,7 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,21 +68,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.createBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import dev.xiaoxin.tiktok_jam_2025.LLMAnalysisViewModel
-import dev.xiaoxin.tiktok_jam_2025.data.CoordinateInfo
-import dev.xiaoxin.tiktok_jam_2025.ml.AgeEstimator
-import dev.xiaoxin.tiktok_jam_2025.ml.AnalysisResult
-import dev.xiaoxin.tiktok_jam_2025.network.analyzeImageFile
-import dev.xiaoxin.tiktok_jam_2025.utils.ImageUtils
-import dev.xiaoxin.tiktok_jam_2025.utils.createBlurredCrop
+import dev.xiaoxin.vpshield.LLMAnalysisViewModel
+import dev.xiaoxin.vpshield.ml.AgeEstimator
+import dev.xiaoxin.vpshield.ml.AnalysisResult
+import dev.xiaoxin.vpshield.network.analyzeImageFile
+import dev.xiaoxin.vpshield.utils.ImageUtils
+import dev.xiaoxin.vpshield.utils.createBlurredCrop
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 
 // Accent color
 private val AccentColor = Color(0xFFF5C076)
@@ -100,18 +103,19 @@ private enum class ProcessingMode { LOCAL, CLOUD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(navController: NavController) {
+fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val viewModel: LLMAnalysisViewModel = viewModel { LLMAnalysisViewModel(context) }
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var originalBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var displayBitmap by remember { mutableStateOf<Bitmap?>(null) } // remote processed or replacement
+    var displayBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var faceResults by remember { mutableStateOf<List<AgeEstimator.Result>>(emptyList()) }
     var facesToBlur by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var blurredFaceCrops by remember { mutableStateOf<Map<Int, Bitmap>>(emptyMap()) }
     var analysisResult by remember { mutableStateOf<AnalysisResult?>(null) }
+    var cloudDetectionUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var processingMode by remember { mutableStateOf(ProcessingMode.LOCAL) }
     var lastUsedMode by remember { mutableStateOf<ProcessingMode?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
@@ -126,6 +130,7 @@ fun MainScreen(navController: NavController) {
         facesToBlur = emptySet()
         blurredFaceCrops = emptyMap()
         analysisResult = null
+        cloudDetectionUris = emptyMap()
         statusMessage = null
         if (uri != null) {
             scope.launch(Dispatchers.IO) {
@@ -141,10 +146,22 @@ fun MainScreen(navController: NavController) {
     }
 
     fun hasNetwork(): Boolean {
-        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
-        val net = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(net) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        } else {
+            @Suppress("DEPRECATION")
+            connectivityManager.activeNetworkInfo?.isConnected == true
+        }
+    }
+
+    fun emptyBitmap(): Bitmap {
+        return createBitmap(1, 1)
     }
 
     fun saveBitmap(bmp: Bitmap, suffix: String) {
@@ -155,18 +172,19 @@ fun MainScreen(navController: NavController) {
                 val values = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, name)
                     put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) put(
-                        MediaStore.Images.Media.RELATIVE_PATH,
-                        "Pictures/PrivacyAnalyzer"
-                    )
                 }
-                val uri = context.contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    values
-                )
-                uri?.let {
-                    context.contentResolver.openOutputStream(it)
-                        ?.use { os -> bmp.compress(Bitmap.CompressFormat.PNG, 100, os) }
+                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?.let { uri ->
+                        context.contentResolver.openOutputStream(uri).use { out ->
+                            out?.let { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        }
+                    }
+                withContext(Dispatchers.Main) {
+                    statusMessage = "Saved as $name"
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    statusMessage = "Export error: ${e.message}"
                 }
             } finally {
                 exporting = false
@@ -174,11 +192,26 @@ fun MainScreen(navController: NavController) {
         }
     }
 
-    fun emptyBitmap(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+    // Convert (x,y,w,h) bbox to RectF
+    fun bboxToRectF(nums: List<Float>, imgW: Int, imgH: Int): RectF {
+        val x = nums[0].coerceAtLeast(0f)
+        val y = nums[1].coerceAtLeast(0f)
+        val w = nums[2].coerceAtLeast(0f)
+        val h = nums[3].coerceAtLeast(0f)
+        val left = x.coerceAtLeast(0f)
+        val top = y.coerceAtLeast(0f)
+        val right = (x + w).coerceAtMost(imgW.toFloat())
+        val bottom = (y + h).coerceAtMost(imgH.toFloat())
+        return RectF(left, top, right, bottom)
+    }
 
-    fun parseCoord(c: CoordinateInfo): Rect {
-        val nums = c.coordinate.split(',', ' ', ';').mapNotNull { it.trim().toIntOrNull() }
-        return if (nums.size >= 4) Rect(nums[0], nums[1], nums[2], nums[3]) else Rect(0, 0, 0, 0)
+    // Server-equivalent adaptive Gaussian radius: k = max(51, (w//3)|1); radius = (k-1)/2 capped at 25
+    fun adaptiveRadius(rect: Rect): Float {
+        val w = rect.width().coerceAtLeast(1)
+        val kRaw = maxOf(51, (w / 3))
+        val k = if (kRaw % 2 == 0) kRaw + 1 else kRaw
+        val radius = (k - 1) / 2f
+        return radius.coerceAtMost(25f)
     }
 
     suspend fun runRemote(uri: Uri) {
@@ -191,69 +224,83 @@ fun MainScreen(navController: NavController) {
                     ?.use { inp -> FileOutputStream(f).use { inp.copyTo(it) } }
                 f
             }
+
             val (resp, fetchedBmp) = analyzeImageFile(file)
+
             if (resp == null) {
                 analysisResult = AnalysisResult(false, false, false)
-                displayBitmap = displayBitmap ?: emptyBitmap()
-                statusMessage = "Cloud failed (defaulted)"
-                lastUsedMode = ProcessingMode.CLOUD
-            } else {
-                analysisResult = AnalysisResult(
-                    resp.face != null,
-                    !resp.location.isNullOrEmpty(),
-                    resp.pii != null
-                )
-                originalBitmap = originalBitmap ?: ImageUtils.loadBitmapFromUri(context, uri, 1600)
-                displayBitmap = if (!resp.location.isNullOrEmpty() && fetchedBmp != null) {
-                    fetchedBmp
-                } else {
-                    val base = originalBitmap ?: emptyBitmap()
-                    val rects =
-                        (resp.face?.mask.orEmpty() + resp.pii?.mask.orEmpty()).map { parseCoord(it) }
-                    base.copy(base.config ?: Bitmap.Config.ARGB_8888, true).also { out ->
-                        val canvas = android.graphics.Canvas(out)
-                        rects.forEach { r ->
-                            if (!r.isEmpty) try {
-                                val crop = createBlurredCrop(
-                                    context,
-                                    base,
-                                    r.left,
-                                    r.top,
-                                    r.right,
-                                    r.bottom,
-                                    25f
-                                )
-                                canvas.drawBitmap(crop, null, android.graphics.RectF(r), null)
-                            } catch (_: Exception) {
-                            }
-                        }
-                    }
-                }
-                statusMessage = "Cloud done"
-                lastUsedMode = ProcessingMode.CLOUD
+                displayBitmap = originalBitmap ?: emptyBitmap()
+                cloudDetectionUris = emptyMap()
+                statusMessage = "Cloud analysis failed"
+                return
             }
+
+            analysisResult = AnalysisResult(
+                faces = resp.face != null,
+                location = resp.location != null,
+                pii = resp.pii != null
+            )
+
+            // Store URIs for cloud detections instead of processing bounding boxes
+            val uriMap = mutableMapOf<String, List<String>>()
+
+//            resp.face?.mask?.let { faceMasks ->
+//                val faceUris = faceMasks.mapIndexed { index, mask ->
+//                    "Face ${index + 1}: ${mask.coordinate} (${mask.reason})"
+//                }
+//                if (faceUris.isNotEmpty()) {
+//                    uriMap["faces"] = faceUris
+//                }
+//            }
+//
+//            resp.location?.mask?.let { locationMasks ->
+//                val locationUris = locationMasks.mapIndexed { index, mask ->
+//                    "Location ${index + 1}: ${mask.coordinate} (${mask.reason})"
+//                }
+//                if (locationUris.isNotEmpty()) {
+//                    uriMap["location"] = locationUris
+//                }
+//            }
+//
+//            resp.pii?.mask?.let { piiMasks ->
+//                val piiUris = piiMasks.mapIndexed { index, mask ->
+//                    "PII ${index + 1}: ${mask.coordinate} (${mask.reason})"
+//                }
+//                if (piiUris.isNotEmpty()) {
+//                    uriMap["pii"] = piiUris
+//                }
+//            }
+
+            cloudDetectionUris = uriMap
+
+            // Just display the original image for cloud mode
+            displayBitmap = fetchedBmp ?: originalBitmap ?: emptyBitmap()
+
+            statusMessage = "Cloud done"
+            lastUsedMode = ProcessingMode.CLOUD
         } catch (e: Exception) {
             analysisResult = analysisResult ?: AnalysisResult(false, false, false)
-            displayBitmap = displayBitmap ?: emptyBitmap()
-            statusMessage = "Cloud error (defaulted): ${e.message}".take(60)
+            displayBitmap = originalBitmap ?: emptyBitmap()
+            cloudDetectionUris = emptyMap()
+            statusMessage = "Cloud error: ${e.message}".take(60)
             lastUsedMode = ProcessingMode.CLOUD
         } finally {
             isAnalyzing = false
         }
     }
 
-    suspend fun runLocal(uri: Uri) {
+    fun runLocal(uri: Uri) {
         isAnalyzing = true
         statusMessage = "Local analyzing faces..."
         try {
             viewModel.analyzeImageFromGallery(
                 uri,
                 onResult = { res ->
-                    val safe = res ?: AnalysisResult(faces = false, location = false, pii = false)
+                    val safe = res ?: AnalysisResult(false, false, false)
                     analysisResult = safe.copy(location = false, pii = false)
                     if (res != null && (res.location || res.pii)) {
                         if (hasNetwork()) {
-                            statusMessage = "Sensitive content -> switching to cloud..."
+                            statusMessage = "Sensitive content -> cloud..."
                             scope.launch { runRemote(uri) }
                         } else {
                             statusMessage = "Sensitive content offline; faces only."
@@ -267,21 +314,29 @@ fun MainScreen(navController: NavController) {
                 onFaceProcessingComplete = { bmp, faces ->
                     originalBitmap = bmp ?: originalBitmap ?: emptyBitmap()
                     faceResults = faces
-                    if (!faces.isNullOrEmpty() && bmp != null) {
+                    // Update analysisResult faces flag so count reflects actual detected faces
+                    analysisResult = (analysisResult ?: AnalysisResult(
+                        false,
+                        false,
+                        false
+                    )).copy(faces = faces.isNotEmpty())
+                    if (faces.isNotEmpty() && bmp != null) {
                         scope.launch(Dispatchers.Default) {
                             val map = mutableMapOf<Int, Bitmap>()
                             faces.forEachIndexed { i, f ->
                                 try {
+                                    // ensure bbox is normalized before feeding createBlurredCrop
+                                    val bbox = f.bbox
                                     map[i] = createBlurredCrop(
                                         context,
                                         bmp,
-                                        f.bbox.left,
-                                        f.bbox.top,
-                                        f.bbox.right,
-                                        f.bbox.bottom,
+                                        bbox.left,
+                                        bbox.top,
+                                        bbox.right,
+                                        bbox.bottom,
                                         25f
                                     )
-                                } catch (_: Exception) {
+                                } catch (_: Exception) { /* ignore per-face errors */
                                 }
                             }
                             blurredFaceCrops = map
@@ -295,22 +350,21 @@ fun MainScreen(navController: NavController) {
         } catch (e: Exception) {
             analysisResult = analysisResult ?: AnalysisResult(false, false, false)
             originalBitmap = originalBitmap ?: emptyBitmap()
-            statusMessage = "Local error (defaulted): ${e.message}".take(60)
+            statusMessage = "Local error: ${e.message}".take(60)
             isAnalyzing = false
             lastUsedMode = ProcessingMode.LOCAL
         }
     }
 
-    // Observe localAvailable as Compose state
-    val localAvailable by viewModel.localAvailable.collectAsState()
+    val localAvailable by viewModel.localAvailable.collectAsState(initial = false)
 
     MaterialTheme(colorScheme = DarkColorScheme) {
         Scaffold(topBar = {
             TopAppBar(
-                title = { Text("Smart Privacy Analyzer") },
+                title = { Text("Visual Private Shield", fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    DarkColorScheme.primary,
-                    DarkColorScheme.onPrimary
+                    containerColor = DarkColorScheme.primary,
+                    titleContentColor = DarkColorScheme.onPrimary
                 )
             )
         }) { pad ->
@@ -322,7 +376,7 @@ fun MainScreen(navController: NavController) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Mode Toggle
+                // Mode toggle
                 val net = hasNetwork()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -358,41 +412,36 @@ fun MainScreen(navController: NavController) {
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        lastUsedMode == ProcessingMode.CLOUD && displayBitmap != null -> androidx.compose.foundation.Image(
-                            displayBitmap!!.asImageBitmap(),
-                            null,
-                            Modifier.fillMaxSize(),
+                        lastUsedMode == ProcessingMode.CLOUD && displayBitmap != null -> Image(
+                            bitmap = displayBitmap!!.asImageBitmap(),
+                            contentDescription = "Cloud processed image",
+                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit
                         )
 
                         originalBitmap != null -> {
                             val bmp = originalBitmap!!
                             if (lastUsedMode != ProcessingMode.LOCAL || faceResults.isEmpty()) {
-                                androidx.compose.foundation.Image(
-                                    bmp.asImageBitmap(),
-                                    null,
-                                    Modifier.fillMaxSize(),
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = "Original image",
+                                    modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Fit
                                 )
                             } else {
                                 Canvas(Modifier.fillMaxSize()) {
-                                    val cw = size.width;
+                                    val cw = size.width
                                     val ch = size.height
-                                    val iw = bmp.width.toFloat();
+                                    val iw = bmp.width.toFloat()
                                     val ih = bmp.height.toFloat()
                                     val s = minOf(cw / iw, ch / ih)
-                                    val dx = (cw - iw * s) / 2f;
+                                    val dx = (cw - iw * s) / 2f
                                     val dy = (ch - ih * s) / 2f
                                     drawIntoCanvas {
                                         it.nativeCanvas.drawBitmap(
                                             bmp,
                                             null,
-                                            android.graphics.RectF(
-                                                dx,
-                                                dy,
-                                                dx + iw * s,
-                                                dy + ih * s
-                                            ),
+                                            RectF(dx, dy, dx + iw * s, dy + ih * s),
                                             null
                                         )
                                     }
@@ -414,12 +463,13 @@ fun MainScreen(navController: NavController) {
                                             }
                                         }
                                         drawIntoCanvas { c ->
-                                            val p = android.graphics.Paint().apply {
-                                                style =
-                                                    android.graphics.Paint.Style.STROKE; strokeWidth =
-                                                3f; color =
-                                                if (facesToBlur.contains(idx)) 0xFFFFC107.toInt() else 0x80FFFFFF.toInt()
-                                            }; c.nativeCanvas.drawRect(l, t, r, b, p)
+                                            val p = Paint().apply {
+                                                style = Paint.Style.STROKE
+                                                strokeWidth = 3f
+                                                color =
+                                                    if (facesToBlur.contains(idx)) 0xFFFFC107.toInt() else 0x80FFFFFF.toInt()
+                                            }
+                                            c.nativeCanvas.drawRect(l, t, r, b, p)
                                         }
                                     }
                                 }
@@ -436,43 +486,44 @@ fun MainScreen(navController: NavController) {
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(
-                                color = AccentColor
-                            ); Text(
-                            if (exporting) "Exporting..." else "Working...",
-                            color = Color.White,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                            CircularProgressIndicator(color = AccentColor)
+                            Text(
+                                if (exporting) "Exporting..." else "Working...",
+                                color = Color.White,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                     }
                 }
 
-                // Upload button
                 Button(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(DarkColorScheme.primary)
-                ) { Text("Upload Image", color = DarkColorScheme.onPrimary) }
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkColorScheme.primary)
+                ) {
+                    Text("Upload Image", color = DarkColorScheme.onPrimary)
+                }
 
-                // Analyze button
                 if (selectedImageUri != null && !isAnalyzing) {
                     Button(
                         onClick = {
                             displayBitmap = null
+                            cloudDetectionUris = emptyMap()
                             if (processingMode == ProcessingMode.CLOUD) {
                                 if (!hasNetwork()) {
-                                    statusMessage = "Offline -> local"; processingMode =
-                                        ProcessingMode.LOCAL
+                                    statusMessage = "Offline -> local"
+                                    processingMode = ProcessingMode.LOCAL
                                 } else {
-                                    scope.launch { runRemote(selectedImageUri!!) }; return@Button
+                                    scope.launch { runRemote(selectedImageUri!!) }
+                                    return@Button
                                 }
                             }
-                            scope.launch { runLocal(selectedImageUri!!) }
+                            runLocal(selectedImageUri!!)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(DarkColorScheme.secondary)
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkColorScheme.secondary)
                     ) {
                         Text(
                             "Analyze (${
@@ -483,11 +534,10 @@ fun MainScreen(navController: NavController) {
                     }
                 }
 
-                // Analysis summary (always show after analysis)
                 analysisResult?.let { res ->
                     Card(
                         Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(DarkColorScheme.surface),
+                        colors = CardDefaults.cardColors(containerColor = DarkColorScheme.surface),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(
@@ -503,7 +553,7 @@ fun MainScreen(navController: NavController) {
                                 Icons.Default.Face,
                                 "Faces Detected",
                                 res.faces,
-                                if (res.faces && faceResults.isNotEmpty()) "${faceResults.size} face(s)" else null
+                                if (res.faces) "${faceResults.size} face(s)" else null
                             )
                             AnalysisResultItem(
                                 Icons.Default.LocationOn,
@@ -519,13 +569,52 @@ fun MainScreen(navController: NavController) {
                     }
                 }
 
-                // Local face blur controls (only show when in local mode and faces detected)
+                // Cloud detection URIs display
+                if (lastUsedMode == ProcessingMode.CLOUD && cloudDetectionUris.isNotEmpty()) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = DarkColorScheme.surface),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Cloud Detection Details",
+                                color = AccentColor,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            cloudDetectionUris.forEach { (category, uris) ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        category.replaceFirstChar { it.uppercase() },
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    uris.forEach { uri ->
+                                        Text(
+                                            "• $uri",
+                                            color = Color.LightGray,
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (lastUsedMode == ProcessingMode.LOCAL && originalBitmap != null && faceResults.isNotEmpty()) {
                     Column(
                         Modifier
                             .fillMaxWidth()
                             .background(DarkColorScheme.surface, RoundedCornerShape(12.dp))
-                            .padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
                             "Face Blur Controls",
@@ -533,28 +622,30 @@ fun MainScreen(navController: NavController) {
                             fontWeight = FontWeight.Bold
                         )
                         faceResults.forEachIndexed { idx, f ->
-                            val sel = facesToBlur.contains(idx); Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Face ${idx + 1}: ${
-                                    String.format(
-                                        "%.1f",
-                                        f.age
+                            val sel = facesToBlur.contains(idx)
+                            val ageText = String.format(Locale.US, "%.1f", f.age)
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Face ${idx + 1}: $ageText ${if (f.age + 2f < 18f) " (Minor)" else ""}",
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                                Switch(
+                                    checked = sel,
+                                    onCheckedChange = {
+                                        facesToBlur =
+                                            if (sel) facesToBlur - idx else facesToBlur + idx
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.DarkGray,
+                                        checkedTrackColor = AccentColor
                                     )
-                                }${if (f.age + 2f < 18f) " (Minor)" else ""}",
-                                color = Color.White,
-                                fontSize = 14.sp
-                            ); Switch(
-                            checked = sel,
-                            onCheckedChange = {
-                                facesToBlur = if (sel) facesToBlur - idx else facesToBlur + idx
-                            },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.DarkGray, checkedTrackColor = AccentColor)
-                        )
-                        }
+                                )
+                            }
                         }
                         if (blurredFaceCrops.isNotEmpty()) {
                             Row(
@@ -562,8 +653,8 @@ fun MainScreen(navController: NavController) {
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 faceResults.forEachIndexed { idx, f ->
-                                    val w = f.bbox.width().coerceAtLeast(1);
-                                    val h = f.bbox.height().coerceAtLeast(1);
+                                    val w = f.bbox.width().coerceAtLeast(1)
+                                    val h = f.bbox.height().coerceAtLeast(1)
                                     val orig = try {
                                         Bitmap.createBitmap(
                                             originalBitmap!!,
@@ -574,37 +665,37 @@ fun MainScreen(navController: NavController) {
                                         ).asImageBitmap()
                                     } catch (_: Exception) {
                                         null
-                                    };
-                                    val blur = blurredFaceCrops[idx]?.asImageBitmap(); Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        "Face ${idx + 1}",
-                                        color = Color.LightGray,
-                                        fontSize = 12.sp
-                                    ); Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    orig?.let {
-                                        androidx.compose.foundation.Image(
-                                            it,
-                                            null,
-                                            Modifier.size(56.dp)
+                                    }
+                                    val blur = blurredFaceCrops[idx]?.asImageBitmap()
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            "Face ${idx + 1}",
+                                            color = Color.LightGray,
+                                            fontSize = 12.sp
                                         )
-                                    }; blur?.let {
-                                    androidx.compose.foundation.Image(
-                                        it,
-                                        null,
-                                        Modifier.size(56.dp)
-                                    )
-                                }
-                                }
-                                }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            orig?.let {
+                                                Image(
+                                                    it,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(56.dp)
+                                                )
+                                            }
+                                            blur?.let {
+                                                Image(
+                                                    it,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(56.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Export buttons (always show after analysis)
                 if ((originalBitmap != null || displayBitmap != null) && analysisResult != null) {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -625,7 +716,8 @@ fun MainScreen(navController: NavController) {
                                             originalBitmap!!,
                                             faceResults,
                                             facesToBlur
-                                        ); saveBitmap(b, "local_blurred")
+                                        )
+                                        saveBitmap(b, "local_blurred")
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
@@ -634,14 +726,7 @@ fun MainScreen(navController: NavController) {
                         }
                         if (lastUsedMode == ProcessingMode.CLOUD && displayBitmap != null) {
                             Button(
-                                onClick = {
-                                    displayBitmap?.let {
-                                        saveBitmap(
-                                            it,
-                                            "cloud"
-                                        )
-                                    }
-                                },
+                                onClick = { displayBitmap?.let { saveBitmap(it, "cloud") } },
                                 modifier = Modifier.weight(1f),
                                 enabled = !exporting
                             ) { Text("Export Cloud") }
@@ -668,7 +753,7 @@ fun AnalysisResultItem(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 icon,
-                null,
+                contentDescription = null,
                 tint = if (detected) Color.Red else Color.Green,
                 modifier = Modifier.size(20.dp)
             )

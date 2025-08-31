@@ -1,6 +1,5 @@
-package dev.xiaoxin.tiktok_jam_2025.ui.theme
+package dev.xiaoxin.vpshield.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +33,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun Tiktok_jam_2025Theme(
+fun VPShieldTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,

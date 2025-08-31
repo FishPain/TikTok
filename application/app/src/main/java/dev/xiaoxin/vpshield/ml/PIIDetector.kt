@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025.ml
+package dev.xiaoxin.vpshield.ml
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment

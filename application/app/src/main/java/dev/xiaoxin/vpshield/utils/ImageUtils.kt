@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025.utils
+package dev.xiaoxin.vpshield.utils
 
 import android.content.Context
 import android.graphics.Bitmap

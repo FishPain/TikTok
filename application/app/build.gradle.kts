@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.xiaoxin.tiktok_jam_2025"
+    namespace = "dev.xiaoxin.vpshield"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.xiaoxin.tiktok_jam_2025"
+        applicationId = "dev.xiaoxin.vpshield"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -72,7 +72,14 @@ dependencies {
     // MediaPipe GenAI library to use the Gemma LLM
     implementation("com.google.mediapipe:tasks-genai:0.10.27")
 
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    // Retrofit for remote endpoints
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    //noinspection UseTomlInstead
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    //noinspection UseTomlInstead
+    implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)

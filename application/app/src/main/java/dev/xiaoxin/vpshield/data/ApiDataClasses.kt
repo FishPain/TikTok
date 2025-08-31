@@ -1,20 +1,7 @@
-package dev.xiaoxin.tiktok_jam_2025.data
+package dev.xiaoxin.vpshield.data
 
 data class ApiResponse(
-    val face: FaceInfo?,
+    val face: String?,
     val location: String?,
-    val pii: PiiInfo?
-)
-
-data class FaceInfo(
-    val mask: List<CoordinateInfo>
-)
-
-data class PiiInfo(
-    val mask: List<CoordinateInfo>
-)
-
-data class CoordinateInfo(
-    val coordinate: String,
-    val reason: String
+    val pii: String?
 )

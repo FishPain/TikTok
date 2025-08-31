@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "tiktok_jam_2025"
+rootProject.name = "vpshield"
 include(":app")
  

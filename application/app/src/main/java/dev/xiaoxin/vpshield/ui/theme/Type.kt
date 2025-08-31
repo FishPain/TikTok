@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025.ui.theme
+package dev.xiaoxin.vpshield.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

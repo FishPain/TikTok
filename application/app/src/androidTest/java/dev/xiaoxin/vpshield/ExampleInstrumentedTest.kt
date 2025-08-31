@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025
+package dev.xiaoxin.vpshield
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("dev.xiaoxin.tiktok_jam_2025", appContext.packageName)
+        assertEquals("dev.xiaoxin.vpshield", appContext.packageName)
     }
 }

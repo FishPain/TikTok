@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025
+package dev.xiaoxin.vpshield
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -12,12 +12,12 @@ import android.net.Uri
 import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.xiaoxin.tiktok_jam_2025.utils.createBlurredCrop
-import dev.xiaoxin.tiktok_jam_2025.ml.AgeEstimator
-import dev.xiaoxin.tiktok_jam_2025.ml.AnalysisResult
-import dev.xiaoxin.tiktok_jam_2025.ml.LLMModel
-import dev.xiaoxin.tiktok_jam_2025.ml.TextRecognizer
-import dev.xiaoxin.tiktok_jam_2025.utils.ImageUtils
+import dev.xiaoxin.vpshield.utils.createBlurredCrop
+import dev.xiaoxin.vpshield.ml.AgeEstimator
+import dev.xiaoxin.vpshield.ml.AnalysisResult
+import dev.xiaoxin.vpshield.ml.LLMModel
+import dev.xiaoxin.vpshield.ml.TextRecognizer
+import dev.xiaoxin.vpshield.utils.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

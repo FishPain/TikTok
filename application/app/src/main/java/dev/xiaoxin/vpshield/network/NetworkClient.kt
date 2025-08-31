@@ -1,8 +1,8 @@
-package dev.xiaoxin.tiktok_jam_2025.network
+package dev.xiaoxin.vpshield.network
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import dev.xiaoxin.tiktok_jam_2025.data.ApiResponse
+import dev.xiaoxin.vpshield.data.ApiResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -24,6 +24,10 @@ suspend fun analyzeImageFile(file: File): Pair<ApiResponse?, Bitmap?> {
     // If location URL exists, fetch the image from the S3 bucket
     if (!apiResponse?.location.isNullOrEmpty()) {
         fetchedBitmap = fetchBitmapFromUrl(apiResponse.location)
+    } else if (!apiResponse?.face.isNullOrEmpty()) {
+        fetchedBitmap = fetchBitmapFromUrl(apiResponse.face)
+    } else if (!apiResponse?.pii.isNullOrEmpty()) {
+        fetchedBitmap = fetchBitmapFromUrl(apiResponse.pii)
     }
 
     return Pair(apiResponse, fetchedBitmap)

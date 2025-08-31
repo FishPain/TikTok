@@ -1,4 +1,4 @@
-package dev.xiaoxin.tiktok_jam_2025
+package dev.xiaoxin.vpshield
 
 import org.junit.Test
 

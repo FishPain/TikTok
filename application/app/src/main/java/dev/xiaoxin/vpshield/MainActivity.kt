@@ -1,7 +1,7 @@
-package dev.xiaoxin.tiktok_jam_2025
+package dev.xiaoxin.vpshield
 
 import FaceBlurScreen
-import dev.xiaoxin.tiktok_jam_2025.ui.screens.MainScreen
+import dev.xiaoxin.vpshield.ui.screens.MainScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,22 +10,22 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import dev.xiaoxin.tiktok_jam_2025.ui.theme.Tiktok_jam_2025Theme
+import dev.xiaoxin.vpshield.ui.theme.VPShieldTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Tiktok_jam_2025Theme {
-                TikTokJamApplication()
+            VPShieldTheme {
+                VPShieldApplication()
             }
         }
     }
 }
 
 @Composable
-fun TikTokJamApplication() {
+fun VPShieldApplication() {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -35,7 +35,7 @@ fun TikTokJamApplication() {
             FaceBlurScreen()
         }
         composable("main") {
-            MainScreen(navController)
+            MainScreen()
         }
     }
 }
