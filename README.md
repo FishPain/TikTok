@@ -2,6 +2,8 @@
 
 A microservices-based system for content privacy protection, built for the TikTok competition. The system detects and provides masking coordinates for faces, personally identifiable information (PII), and location-sensitive content in images.  
 
+> Note: The cloud micro-service code is in the `main` brainch and the local mobile code is in the `mobile-app` branch.
+
 ## Architecture
 
 The system consists of four containerized services:
