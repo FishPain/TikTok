@@ -4,6 +4,8 @@ A microservices-based system for content privacy protection, built for the TikTo
 
 > Note: The cloud micro-service code is in the `main` brainch and the local mobile code is in the `mobile-app` branch.
 
+Hosted Swagger is here: `http://ec2-18-136-120-44.ap-southeast-1.compute.amazonaws.com:8000`. API Key is `IAMASECRET`
+
 ## Architecture
 
 The system consists of four containerized services:
