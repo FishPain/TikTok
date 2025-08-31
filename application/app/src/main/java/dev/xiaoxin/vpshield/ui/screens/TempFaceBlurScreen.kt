@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.xiaoxin.tiktok_jam_2025.ml.AgeEstimator
 import dev.xiaoxin.tiktok_jam_2025.utils.ImageUtils
+import dev.xiaoxin.tiktok_jam_2025.utils.createBlurredCrop
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope

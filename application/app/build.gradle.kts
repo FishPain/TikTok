@@ -20,7 +20,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    packagingOptions {
+    packaging {
         resources {
             pickFirsts += listOf(
                 "lib/armeabi-v7a/libmediapipe_tasks_vision_jni.so",
@@ -65,7 +65,14 @@ dependencies {
     // MediaPipe Face Detection for face localization
     implementation(libs.tasks.vision)
     implementation(libs.androidx.exifinterface)
-    
+
+    // ONNX Runtime for Piiranha PII detector
+    implementation(libs.onnxruntime.android)
+
+    // MediaPipe GenAI library to use the Gemma LLM
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
+
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)

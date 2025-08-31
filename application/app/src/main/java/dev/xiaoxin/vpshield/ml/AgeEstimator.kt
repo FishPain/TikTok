@@ -11,7 +11,7 @@ import java.nio.ByteOrder
 import androidx.core.graphics.scale
 
 class AgeEstimator(
-    private val context: Context,
+    context: Context,
     modelFilename: String = "age_estimator_model.tflite",
     private val errorMargin: Float = 2f
 ) {
@@ -41,7 +41,7 @@ class AgeEstimator(
 
             val output = Array(1) { FloatArray(1) }
             interpreter.run(inputTensor, output)
-            val ageEstimate = output[0][0] * 116f
+            val ageEstimate = output[0][0] * 58f
             Log.d("Age estimate:", ageEstimate.toString())
             val maskRecommendation = if (ageEstimate + errorMargin < 18f) "Yes" else "No"
             Log.d("Mask recommendation:", maskRecommendation)

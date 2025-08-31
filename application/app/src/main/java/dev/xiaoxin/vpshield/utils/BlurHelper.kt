@@ -1,3 +1,5 @@
+package dev.xiaoxin.tiktok_jam_2025.utils
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.renderscript.Allocation
